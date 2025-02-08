@@ -42,56 +42,6 @@
             <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
 
-        <!-- 添加管控措施展示区域 -->
-        <!-- <el-collapse v-model="activeControl" v-if="controlInfo" class="mb8">
-            <el-collapse-item title="最新管控措施" name="1">
-                <div class="control-info">
-                    <el-descriptions :column="2" border>
-                        <el-descriptions-item label="预警等级">
-                            <el-tag :type="getWarningLevelType(controlInfo.warningLevel)">{{
-                                getWarningLevelText(controlInfo.warningLevel) }}</el-tag>
-                        </el-descriptions-item>
-                        <el-descriptions-item label="响应等级">
-                            <el-tag :type="getResponseLevelType(controlInfo.responseLevel)">{{
-                                getResponseLevelText(controlInfo.responseLevel) }}</el-tag>
-                        </el-descriptions-item>
-                        <el-descriptions-item label="管控时间" :span="2">{{ controlInfo.startTime }} 至 {{
-                            controlInfo.endTime }}</el-descriptions-item>
-                        <el-descriptions-item label="管控措施" :span="2">
-                            <div class="control-measures">
-                                <template v-if="controlInfo.controlMeasure">
-                                    <template v-if="/^\d+$/.test(controlInfo.controlMeasure)">
-                                        {{ getMeasureText(controlInfo.controlMeasure) }}
-                                    </template>
-<template v-else>
-                                        <template
-                                            v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0 || getEmissionStandards(controlInfo.controlMeasure).length > 0">
-                                            <div v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0"
-                                                class="measure-item">
-                                                <div class="measure-label">限行车辆类型：</div>
-                                                <div class="measure-content">{{
-                                                    getVehicleTypes(controlInfo.controlMeasure).join('、')
-                                                    }}</div>
-                                            </div>
-                                            <div v-if="getEmissionStandards(controlInfo.controlMeasure).length > 0"
-                                                class="measure-item">
-                                                <div class="measure-label">限行排放阶段：</div>
-                                                <div class="measure-content">{{
-                                                    getEmissionStandards(controlInfo.controlMeasure).join('、') }}</div>
-                                            </div>
-                                        </template>
-<template v-else>
-                                            {{ controlInfo.controlMeasure }}
-                                        </template>
-</template>
-</template>
-</div>
-</el-descriptions-item>
-</el-descriptions>
-</div>
-</el-collapse-item>
-</el-collapse> -->
-
         <el-table v-loading="loading" :data="ruleList" @selection-change="handleSelectionChange">
             <el-table-column type="selection" width="55" align="center" />
             <el-table-column label="企业名称" align="center" show-overflow-tooltip>

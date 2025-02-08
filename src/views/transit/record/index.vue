@@ -57,7 +57,7 @@
               @change="handleDateRangeChange" />
           </el-form-item>
         </el-col>
-        <el-col :span = "12"></el-col>
+        <el-col :span="12"></el-col>
         <el-col :span="6">
           <el-form-item label="通行状态" prop="state">
             <el-select v-model="queryParams.state" placeholder="请选择通行状态" clearable style="width: 180px;">
@@ -97,31 +97,28 @@
         <el-button type="primary" plain icon="Warning" :disabled="multiple" @click="checkBlacklist">检查黑名单</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button 
-          :loading="exportingOffsite"
-          @click="handleExportOffsite"
-          v-hasPermi="['transit:record:export']"
-        >
-          <el-icon><Download /></el-icon>导出场外车辆台账
+        <el-button :loading="exportingOffsite" @click="handleExportOffsite" v-hasPermi="['transit:record:export']">
+          <el-icon>
+            <Download />
+          </el-icon>导出场外车辆台账
         </el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button 
-          :loading="exportingOnsite"
-          @click="handleExportOnsite"
-          v-hasPermi="['transit:record:export']"
-        >
-          <el-icon><Download /></el-icon>导出厂内车辆台账
+        <el-button :loading="exportingOnsite" @click="handleExportOnsite" v-hasPermi="['transit:record:export']">
+          <el-icon>
+            <Download />
+          </el-icon>导出厂内车辆台账
         </el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button 
-          :loading="exportingMachine"
-          @click="handleExportMachine"
-          v-hasPermi="['transit:record:export']"
-        >
-          <el-icon><Download /></el-icon>导出非道路车辆台账
+        <el-button :loading="exportingMachine" @click="handleExportMachine" v-hasPermi="['transit:record:export']">
+          <el-icon>
+            <Download />
+          </el-icon>导出非道路车辆台账
         </el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="Refresh" :disabled="multiple" @click="handleReAuthLedger">重新补录记录</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
@@ -228,10 +225,41 @@
         show-overflow-tooltip />
       <el-table-column v-if="columns[13].visible" label="出场认证信息" align="center" prop="userName" width="120"
         show-overflow-tooltip />
-      <el-table-column label="操作" align="center" fixed="right">
+      <el-table-column label="操作" align="center" min-width="120" fixed="right">
         <template #default="scope">
-          <el-button size="small" icon="Delete" type="danger" @click="handleDelete(scope.row)"
-            v-hasPermi="['transit:transitrecord:remove']" />
+          <div class="operation-container">
+            <template v-if="needLedger(scope.row.companyId)">
+              <div class="ledger-status">
+                <el-tag size="small" :type="getLedgerStatusType(ledgerInfo[scope.row.id]?.inStatus)" class="status-tag">
+                  入场{{ getLedgerStatusText(ledgerInfo[scope.row.id]?.inStatus) }}
+                </el-tag>
+                <el-tag size="small" :type="getLedgerStatusType(ledgerInfo[scope.row.id]?.outStatus)"
+                  class="status-tag">
+                  出场{{ getLedgerStatusText(ledgerInfo[scope.row.id]?.outStatus) }}
+                </el-tag>
+              </div>
+              <el-button
+                link
+                type="warning"
+                size="small"
+                @click="handleReAuthLedger(scope.row)"
+                v-if="ledgerInfo[scope.row.id]?.inStatus === 2 || ledgerInfo[scope.row.id]?.outStatus === 2"
+              >
+                <el-icon><Refresh /></el-icon>
+                <span class="reauth-text">重新补录</span>
+              </el-button>
+            </template>
+            <el-button
+              link
+              type="danger"
+              size="small"
+              @click="handleDelete(scope.row)"
+              v-hasPermi="['transit:transitrecord:remove']"
+            >
+              <el-icon><Delete /></el-icon>
+              <span class="delete-text">删除</span>
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -242,7 +270,7 @@
 </template>
 
 <script setup name="Record">
-import { listRecord, getRecord, delRecord, addRecord, updateRecord, reAuth } from "@/api/transit/record";
+import { listRecord, getRecord, delRecord, addRecord, updateRecord, reAuth, getLedgerInfo, reAuthLedger } from "@/api/transit/record";
 import { ref } from "vue";
 import { selectIds } from "@/api/system/info";
 import { getEmissionByPlateNo } from "@/api/system/emission";
@@ -265,6 +293,8 @@ const enterpriseIds = ref([]);
 const exportingOffsite = ref(false);
 const exportingOnsite = ref(false);
 const exportingMachine = ref(false);
+const ledgerInfo = ref({});
+const enterpriseMap = ref({});
 
 const data = reactive({
   form: {},
@@ -275,7 +305,7 @@ const data = reactive({
     startTime: null,
     endTime: null,
     plateNo: null,
-    plateColorType:null,
+    plateColorType: null,
     goodsOrigin: null,
     goodsDestination: null,
     classifyTitle: null,
@@ -314,7 +344,9 @@ const data = reactive({
     { key: 'outboundCertStatus', label: '出场认证状态', visible: true },
     { key: 'certMessage', label: '入场认证信息', visible: true },
     { key: 'goodsOrigin', label: '货物来源地', visible: true },
-    { key: 'goodsDestination', label: '货物目的地', visible: true }
+    { key: 'goodsDestination', label: '货物目的地', visible: true },
+    { key: 'inLedgerStatus', label: '入场补录状态', visible: true },
+    { key: 'outLedgerStatus', label: '出场补录状态', visible: true }
   ]
 });
 
@@ -333,7 +365,21 @@ async function getList() {
     }));
 
     recordList.value = records;
-    console.info(recordList.value);
+
+    // 获取所有记录的ID
+    const recordIds = records.map(record => record.id);
+    if (recordIds.length > 0) {
+      // 查询补录情况
+      const ledgerResponse = await getLedgerInfo(recordIds);
+      if (ledgerResponse.code === 200) {
+        // 将补录信息转换为以记录ID为key的对象，方便查找
+        ledgerInfo.value = ledgerResponse.data.reduce((acc, item) => {
+          acc[item.recordId] = item;
+          return acc;
+        }, {});
+      }
+    }
+
     total.value = response.total;
   } catch (error) {
     console.error('获取通行记录列表失败:', error);
@@ -345,7 +391,7 @@ async function getList() {
 /** 检查黑名单状态 */
 async function checkBlacklist() {
   const selectedRecords = recordList.value.filter(record => ids.value.includes(record.id));
-  
+
   for (let record of selectedRecords) {
     try {
       const blacklistResponse = await getEmissionByPlateNo('1', record.plateNo);
@@ -501,9 +547,9 @@ function submitForm() {
 /** 删除按钮操作 */
 function handleDelete(row) {
   const records = row.id ? [row] : recordList.value.filter(record => ids.value.includes(record.id));
-  
+
   // 筛选出未认证的记录
-  const unCertifiedRecords = records.filter(record => 
+  const unCertifiedRecords = records.filter(record =>
     record.inboundCertStatus !== '1' && record.outboundCertStatus !== '1'
   );
 
@@ -565,20 +611,20 @@ async function handleExportOffsite() {
       position: 'bottom-right',
       duration: 0
     });
-    
+
     // 使用 timeout 确保请求不会无限等待
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('导出请求超时')), 30000); // 30秒超时
     });
-    
+
     // 实际的导出请求
     const exportPromise = proxy.download('transit/record/export/offsite', {
       ...queryParams.value
     }, `record_${new Date().getTime()}.xlsx`);
-    
+
     // 使用 Promise.race 处理超时情况
     await Promise.race([exportPromise, timeoutPromise]);
-    
+
     ElNotification.closeAll();
     ElNotification.success('导出成功');
   } catch (error) {
@@ -600,17 +646,17 @@ async function handleExportOnsite() {
       position: 'bottom-right',
       duration: 0
     });
-    
+
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('导出请求超时')), 30000);
     });
-    
+
     const exportPromise = proxy.download('transit/record/export/onsite', {
       ...queryParams.value
     }, `record_${new Date().getTime()}.xlsx`);
-    
+
     await Promise.race([exportPromise, timeoutPromise]);
-    
+
     ElNotification.closeAll();
     ElNotification.success('导出成功');
   } catch (error) {
@@ -632,17 +678,17 @@ async function handleExportMachine() {
       position: 'bottom-right',
       duration: 0
     });
-    
+
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('导出请求超时')), 30000);
     });
-    
+
     const exportPromise = proxy.download('transit/record/export/machine', {
       ...queryParams.value
     }, `record_${new Date().getTime()}.xlsx`);
-    
+
     await Promise.race([exportPromise, timeoutPromise]);
-    
+
     ElNotification.closeAll();
     ElNotification.success('导出成功');
   } catch (error) {
@@ -669,10 +715,51 @@ async function getEnterpriseList() {
   try {
     const response = await selectIds();
     enterpriseIds.value = response.rows;
-    // console.log("企业列表：\n" + JSON.stringify(enterpriseIds.value));
+    // 将企业信息转换为以 companyId 为键的对象，方便查找
+    enterpriseMap.value = response.rows.reduce((acc, item) => {
+      acc[item.companyId] = item;
+      return acc;
+    }, {});
   } catch (error) {
     console.log("获取企业列表失败", error);
   }
+}
+
+// 添加判断企业是否需要补录的函数
+const needLedger = (companyId) => {
+  const enterprise = enterpriseMap.value[companyId];
+  return enterprise && (enterprise.apiStrategy === 2 || enterprise.apiStrategy === 3);
+};
+
+// 修改状态判断函数
+const getLedgerStatusType = (status) => {
+
+  if (status === 2) {
+    return 'success'; // 已补录使用绿色
+  } else {
+    return 'danger'; // 未补录状态使用黄色警告
+  }
+};
+
+const getLedgerStatusText = (status) => {
+  if (status === 2) {
+    return '已补录'; // 未补录的状态文字
+  } else {
+    return '未补录';
+  }
+};
+
+// 重新补录处理函数
+function handleReAuthLedger(row) {
+  let _ids = row ? [row.id] : ids.value;
+  _ids = Array.isArray(_ids) ? _ids : [_ids];
+  
+  proxy.$modal.confirm('是否重新补录编号为"' + _ids + '"的记录？').then(function () {
+    return reAuthLedger(_ids);
+  }).then(() => {
+    getList();
+    proxy.$modal.msgSuccess("重新补录提交成功");
+  }).catch(() => {});
 }
 
 getEnterpriseList();
@@ -693,5 +780,77 @@ getList();
 .fade-enter,
 .fade-leave-to {
   opacity: 0;
+}
+
+.operation-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+}
+
+.ledger-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.status-tag {
+  width: 100%;
+  text-align: center;
+  margin: 0;
+  font-size: 12px;
+  padding: 0 8px;
+  height: 24px;
+  line-height: 24px;
+}
+
+/* 为不同状态的标签添加特定样式 */
+.status-tag.el-tag--success {
+  background-color: var(--el-color-success-light-9);
+  border-color: var(--el-color-success-light-5);
+  color: var(--el-color-success);
+}
+
+.status-tag.el-tag--danger {
+  background-color: var(--el-color-danger-light-9);
+  border-color: var(--el-color-danger-light-5);
+  color: var(--el-color-danger);
+}
+
+.status-tag.el-tag--warning {
+  background-color: var(--el-color-warning-light-9);
+  border-color: var(--el-color-warning-light-5);
+  color: var(--el-color-warning);
+}
+
+.delete-text {
+  margin-left: 4px;
+}
+
+/* 删除按钮悬停效果 */
+.el-button.el-button--danger.el-button--link:hover {
+  opacity: 0.8;
+}
+
+/* 确保图标和文字垂直对齐 */
+.el-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reauth-text {
+  margin-left: 4px;
+}
+
+.el-button.el-button--warning.el-button--link {
+  margin-bottom: 4px;
+}
+
+.el-button.el-button--warning.el-button--link:hover {
+  opacity: 0.8;
 }
 </style>

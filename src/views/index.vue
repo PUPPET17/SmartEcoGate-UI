@@ -23,9 +23,11 @@
     </el-col>
 
     <el-col :span="9" class="card-box">
-      <el-card class="custom-card fixed-height-card">
+      <el-card class="custom-card fixed-height-card" style="margin-bottom: 10px;">
         <template #header>
-          <span>在线情况</span>
+          <div class="card-header-with-button">
+            <span>在线情况</span>
+          </div>
         </template>
 
         <el-form>
@@ -38,7 +40,6 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="0"></el-col>
             <el-col :span="8">
               <el-form-item>
                 <el-switch v-model="showOfflineOnly" active-text="仅离线" inactive-text="全部" />
@@ -58,6 +59,93 @@
           </div>
         </div>
       </el-card>
+      <el-card class="custom-card fixed-height-card" style="margin-top: 10px;">
+        <template #header>
+          <div class="card-header-with-button">
+            <span>最新管控措施</span>
+            <el-button type="primary" link icon="Plus" @click="goToControlRule">管理管控规则</el-button>
+          </div>
+        </template>
+
+        <el-form>
+          <el-row :gutter="10">
+            <el-col :span="14">
+              <el-form-item label="企业名称" prop="companyId">
+                <el-select v-model="selectedControlCompanyId" placeholder="请选择企业" clearable filterable>
+                  <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
+                    :value="item.companyId" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item>
+                <el-button type="info" plain icon="InfoFilled" @click="getLatestControl(selectedControlCompanyId)"
+                  :disabled="!selectedControlCompanyId">查询最新管控</el-button>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+
+        <div class="status-list scrollable-content">
+          <!-- 管理员且未选择企业时显示企业列表 -->
+          <template v-if="userStore.roles.includes('admin') && !selectedControlCompanyId">
+            <div v-for="item in enterpriseIds" :key="item.companyId" class="status-item">
+              <div class="status-content">
+                <span class="interface-name clickable" @click="handleControlCompanyClick(item.companyId)">
+                  {{ item.companyName }}
+                </span>
+              </div>
+            </div>
+          </template>
+          <!-- 选择企业后或非管理员时显示管控信息 -->
+          <template v-else>
+            <div v-if="controlInfo" class="control-info">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="预警等级">
+                  <el-tag :type="getWarningLevelType(controlInfo.warningLevel)">
+                    {{ getWarningLevelText(controlInfo.warningLevel) }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="响应等级">
+                  <el-tag :type="getResponseLevelType(controlInfo.responseLevel)">
+                    {{ getResponseLevelText(controlInfo.responseLevel) }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="管控时间" :span="2">
+                  {{ controlInfo.startTime }} 至 {{ controlInfo.endTime }}
+                </el-descriptions-item>
+                <el-descriptions-item label="管控措施" :span="2">
+                  <div class="control-measures">
+                    <template v-if="controlInfo.controlMeasure">
+                      <template v-if="/^\d+$/.test(controlInfo.controlMeasure)">
+                        {{ getMeasureText(controlInfo.controlMeasure) }}
+                      </template>
+                      <template v-else>
+                        <template v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0 || getEmissionStandards(controlInfo.controlMeasure).length > 0">
+                          <div v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0" class="measure-item">
+                            <div class="measure-label">限行车辆类型：</div>
+                            <div class="measure-content">{{ getVehicleTypes(controlInfo.controlMeasure).join('、') }}</div>
+                          </div>
+                          <div v-if="getEmissionStandards(controlInfo.controlMeasure).length > 0" class="measure-item">
+                            <div class="measure-label">限行排放阶段：</div>
+                            <div class="measure-content">{{ getEmissionStandards(controlInfo.controlMeasure).join('、') }}</div>
+                          </div>
+                        </template>
+                        <template v-else>
+                          {{ controlInfo.controlMeasure }}
+                        </template>
+                      </template>
+                    </template>
+                  </div>
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
+            <div v-else class="empty-container">
+              <el-empty description="暂无管控措施" />
+            </div>
+          </template>
+        </div>
+      </el-card>
     </el-col>
   </el-row>
 </template>
@@ -71,6 +159,8 @@ import { selectIds, isAlive } from "@/api/system/info";
 import { listCamera } from "@/api/system/camera";
 import useUserStore from '@/store/modules/user';
 import OfflineLog from '@/components/OfflineLog/index.vue';
+import { queryLatestControl } from "@/api/system/measure";
+import { useRouter } from 'vue-router';
 
 const enterpriseIds = ref([]);
 const nodes = ref([
@@ -273,11 +363,31 @@ watch(selectedCompanyId, async (newCompanyId) => {
   }
 });
 
+const selectedControlCompanyId = ref(null);
+const controlInfo = ref(null);
+
+// 获取最新管控措施
+const getLatestControl = async (companyId) => {
+  if (!companyId) {
+    return;
+  }
+  try {
+    const response = await queryLatestControl(companyId);
+    if (response.code === 200) {
+      controlInfo.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取最新管控措施失败:', error);
+  }
+};
+
 onMounted(() => {
   const initialize = async () => {
     await getEnterpriseList();
     if (!userStore.roles.includes('admin') && enterpriseIds.value.length > 0) {
       selectedCompanyId.value = enterpriseIds.value[0].companyId;
+      selectedControlCompanyId.value = enterpriseIds.value[0].companyId;
+      await getLatestControl(selectedControlCompanyId.value);
     }
     // 如果是普通企业用户，只获取自己企业的相机列表
     if (!userStore.roles.includes('admin')) {
@@ -300,10 +410,92 @@ async function getEnterpriseList() {
   }
 }
 
-getEnterpriseList();
-
 const handleCompanyClick = (companyId) => {
   selectedCompanyId.value = companyId;
+};
+
+// 添加 watch
+watch(selectedControlCompanyId, async (newCompanyId) => {
+  if (newCompanyId) {
+    await getLatestControl(newCompanyId);
+  } else {
+    controlInfo.value = null;
+  }
+});
+
+// 添加辅助函数
+const getWarningLevelText = (level) => {
+  const levels = {
+    '1': '一级预警',
+    '2': '二级预警',
+    '3': '三级预警',
+    '4': '四级预警',
+    '5': '五级预警'
+  };
+  return levels[level] || `${level}级预警`;
+};
+
+const getWarningLevelType = (level) => {
+  const types = {
+    '1': 'danger',
+    '2': 'danger',
+    '3': 'warning',
+    '4': 'warning',
+    '5': 'info'
+  };
+  return types[level] || '';
+};
+
+const getResponseLevelText = (level) => {
+  const levels = {
+    '1': '一级响应',
+    '2': '二级响应',
+    '3': '三级响应',
+    '4': '四级响应',
+    '5': '五级响应'
+  };
+  return levels[level] || `${level}级响应`;
+};
+
+const getResponseLevelType = (level) => {
+  const types = {
+    '1': 'danger',
+    '2': 'warning',
+    '3': 'info',
+  };
+  return types[level] || '';
+};
+
+const getMeasureText = (measure) => {
+  const measureMap = {
+    '1': '禁行国三及以下重型柴油车（燃气）车通行',
+    '2': '禁行国四及以下重型柴油（燃气）车通行',
+    '3': '禁行国四及以下重型柴油与国五及以下燃气车通行',
+    '4': '停止公路运输'
+  };
+  return measureMap[measure] || measure;
+};
+
+const getVehicleTypes = (measure) => {
+  if (!measure) return [];
+  const match = measure.match(/限行车辆类型：(.*?)(?=，|$)/);
+  return match ? match[1].split(' ').filter(Boolean) : [];
+};
+
+const getEmissionStandards = (measure) => {
+  if (!measure) return [];
+  const match = measure.match(/限行排放阶段：(.*?)(?=，|$)/);
+  return match ? match[1].split(' ').filter(Boolean) : [];
+};
+
+const handleControlCompanyClick = (companyId) => {
+  selectedControlCompanyId.value = companyId;
+};
+
+const router = useRouter();
+
+const goToControlRule = () => {
+  router.push('/controlRule');
 };
 </script>
 
@@ -408,6 +600,7 @@ const handleCompanyClick = (companyId) => {
   padding-right: 5px;
   min-height: 200px;
   height: 0;
+  position: relative;
 }
 
 .clickable {
@@ -463,5 +656,24 @@ const handleCompanyClick = (companyId) => {
   height: 100%;
   padding: 10px;
   overflow: auto;
+}
+
+.card-header-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.empty-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+}
+
+.el-empty {
+  padding: 0;
+  margin: 0;
 }
 </style>

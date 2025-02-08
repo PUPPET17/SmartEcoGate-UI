@@ -10,13 +10,13 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="5">
+        <!-- <el-col :span="5">
           <el-form-item label="禁行排放等级" prop="emissionState">
             <el-select v-model="queryParams.emissionState" placeholder="请选择禁行排放等级" clearable style="width: 180px;">
               <el-option v-for="dict in emission_state" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
-        </el-col>
+        </el-col> -->
         <el-col :span="5">
           <el-form-item label="二维码过期时间" prop="qrExpireTime">
             <el-input v-model="queryParams.qrExpireTime" placeholder="请输入过期时间" clearable @keyup.enter="handleQuery"
@@ -112,9 +112,9 @@
                     <el-icon>
                       <Warning />
                     </el-icon>
-                    禁行排放等级:
+                    自动删除无效记录:
                   </span>
-                  <dict-tag :options="emission_state" :value="item.emissionState" />
+                  <dict-tag :options="int_yes_no" :value="item.emissionState" />
                 </div>
               </el-col>
               <el-col :span="24">
@@ -176,7 +176,7 @@
     </el-row>
 
     <!-- 全屏对话框 -->
-    <el-dialog v-model="fullscreenDialogVisible" :title="currentCompanyName + ' - 禁行规则管理'" fullscreen :show-close="true"
+    <el-dialog v-model="fullscreenDialogVisible" :title="currentCompanyName + ' - 禁行规则管理'" :show-close="true"
       :close-on-click-modal="false" :close-on-press-escape="true" destroy-on-close>
       <div class="fullscreen-dialog-content">
         <el-row :gutter="20">
@@ -373,14 +373,6 @@
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="禁行排放等级" prop="emissionState">
-              <el-select v-model="formData.emissionState" placeholder="请选择禁行排放等级">
-                <el-option v-for="dict in emission_state" :key="dict.value" :label="dict.label"
-                  :value="parseInt(dict.value)" :disabled="[].includes(dict.value)" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
             <el-form-item label="动态二维码过期时间" prop="qrExpireTime" label-width="180">
               <el-input-number v-model="formData.qrExpireTime" :min="30" :step="10" controls-position="right"
                 style="width: 180px" class="custom-input-number">
@@ -396,6 +388,15 @@
               <div class="append-text" v-if="formData.qrExpireTime">
                 秒
               </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="自动删除无效记录" prop="emissionState">
+              <el-radio-group v-model="formData.emissionState">
+                <el-radio v-for="dict in int_yes_no" :key="dict.value" :label="parseInt(dict.value)">
+                  {{ dict.label }}
+                </el-radio>
+              </el-radio-group>
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -1882,7 +1883,6 @@ const getFullTagContent = (values, options) => {
 
 .fullscreen-dialog-content {
   padding: 20px;
-  height: calc(100vh - 120px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   will-change: transform;
@@ -1971,13 +1971,20 @@ const getFullTagContent = (values, options) => {
 }
 
 .custom-tooltip {
-  background-color: #f5f5f5; /* 背景颜色 */
-  border: 1px solid #dcdfe6; /* 边框颜色 */
-  border-radius: 4px; /* 圆角 */
-  padding: 8px; /* 内边距 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* 阴影效果 */
-  color: #333; /* 字体颜色 */
-  font-size: 14px; /* 字体大小 */
+  background-color: #f5f5f5;
+  /* 背景颜色 */
+  border: 1px solid #dcdfe6;
+  /* 边框颜色 */
+  border-radius: 4px;
+  /* 圆角 */
+  padding: 8px;
+  /* 内边距 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  /* 阴影效果 */
+  color: #333;
+  /* 字体颜色 */
+  font-size: 14px;
+  /* 字体大小 */
 }
 
 .custom-tooltip .el-tooltip__popper {

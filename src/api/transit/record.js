@@ -49,3 +49,18 @@ export function reAuth(data) {
     method: 'get',
   });
 }
+
+// 查询货物补录情况
+export function getLedgerInfo(ids) {
+  return request({
+    url: `/system/ledger/${ids}`,
+    method: 'get'
+  })
+}
+
+export function reAuthLedger(ids) {
+  return request({
+    url: `/system/ledger/reAuth/${ids}`,
+    method: 'get'
+  })
+}

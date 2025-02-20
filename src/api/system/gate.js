@@ -49,3 +49,11 @@ export function getIds() {
     method: 'get'
   })
 }
+
+export function getGateInfoByCompanyId(companyId) {
+  return request({
+    url: '/system/gate/c/' + companyId,
+    method: 'get'
+  })
+}
+

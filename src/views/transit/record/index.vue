@@ -35,21 +35,6 @@
             </el-select>
           </el-form-item>
         </el-col>
-        <!-- <el-col :span="6">
-          <el-form-item label="货物来源地" prop="goodsOrigin">
-            <el-tooltip class="item" effect="light" content="支持模糊搜索" placement="bottom" popper-class="fade">
-              <el-input v-model="queryParams.goodsOrigin" placeholder="请输入货物来源地" clearable @keyup.enter="handleQuery" style="width: 180px;"/>
-            </el-tooltip>
-          </el-form-item>
-        </el-col>
-        <el-col :span="6">
-          <el-form-item label="货物目的地" prop="goodsDestination">
-            <el-tooltip class="item" effect="light" content="支持模糊搜索" placement="bottom" popper-class="fade">
-              <el-input v-model="queryParams.goodsDestination" placeholder="请输入货物目的地" clearable style="width: 180px;"
-                @keyup.enter="handleQuery" />
-            </el-tooltip>
-          </el-form-item>
-        </el-col> -->
         <el-col :span="12">
           <el-form-item label="创建时间" prop="dateRange">
             <el-date-picker v-model="dateRange" type="datetimerange" range-separator="至" start-placeholder="开始日期"

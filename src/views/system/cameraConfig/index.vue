@@ -125,7 +125,7 @@
                       <span class="help-number">3.</span>
 
                       <span class="help-text">
-                        推荐使用 ’自定义’ 选项，配合变量占位符灵活配置显示文字，<br>
+                        推荐使用 '自定义' 选项，配合变量占位符灵活配置显示文字，<br>
                         例如可以配置为：<span style="color: #FF4500;">{plateNo} ，当前时间{time} ，排放标准{emission}
                           ，{msg}</span>，<br>
                         则当允许通行时显示结果为：<span style="color: #FF4500;">京A12345 ，当前时间2024-12-28 08:00:00
@@ -373,6 +373,22 @@
               <el-input v-model="cameraForm.password" />
             </el-form-item>
           </el-col>
+          <el-col :span="12"></el-col>
+          <el-col :span="6">
+            <el-form-item label="国标设备编号" prop="deviceId">
+              <el-input v-model="cameraForm.deviceId" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="国标通道编号" prop="channelId">
+              <el-input v-model="cameraForm.channelId" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
+            <el-form-item label="nvr自用编号" prop="localChannelId">
+              <el-input v-model="cameraForm.localChannelId" />
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <div class="section-title">位置信息</div>
@@ -407,12 +423,12 @@
         <template v-if="!isAddingCamera">
           <div class="section-title">视频配置</div>
           <el-row :gutter="20">
-            <el-col :span="10">
+            <el-col :span="12">
               <el-form-item label="视频播放地址">
                 <el-input v-model="cameraForm.vedioSrc" class="w-full" disabled />
               </el-form-item>
             </el-col>
-            <el-col :span="10">
+            <el-col :span="12">
               <el-form-item label="回放视频地址">
                 <el-input v-model="cameraForm.vedioReplay" class="w-full" disabled />
               </el-form-item>
@@ -443,6 +459,7 @@
           <div class="save-btn-container">
             <el-button type="success" @click="handleAdd" :disabled="!(isAddingCamera || isAddingGate)">保存新增</el-button>
             <el-button type="primary" @click="handleUpdate" :disabled="isAddingCamera || isAddingGate">保存修改</el-button>
+            <el-button type="primary" @click="handleAuthCamera" :disabled="isAddingCamera || isAddingGate">提交认证</el-button>
           </div>
         </el-form-item>
       </el-form>
@@ -551,7 +568,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { VideoCamera, Monitor, SetUp, Refresh, Delete, Plus, Rank, Search, QuestionFilled } from '@element-plus/icons-vue'
 import { selectIds } from "@/api/system/info";
 import { getGateList, getDeviceList, getGateInfo, saveScreen, updateScreen } from '@/api/system/device'
-import { addCamera, updateCamera } from '@/api/system/camera'
+import { addCamera, updateCamera, authCamera } from '@/api/system/camera'
 import { addGate, updateGate } from '@/api/system/gate'
 import { ElMessage } from 'element-plus'
 import draggable from 'vuedraggable'
@@ -608,6 +625,9 @@ const cameraForm = reactive({
   // 视频配置
   vedioSrc: '',     // 视频播放地址
   vedioReplay: '',  // 回放视频地址
+  deviceId: '',     // 设备ID
+  channelId: '',    // 通道ID
+  localChannelId: '', // 本地通道ID
 
   // 位置信息
   entranceNo: '',   // 出入口编号
@@ -801,6 +821,9 @@ const handleUpdate = async () => {
       username: cameraForm.username,
       password: cameraForm.password,
       channels: cameraForm.channels,
+      deviceId: cameraForm.deviceId,
+      channelId: cameraForm.channelId,
+      localChannelId: cameraForm.localChannelId
     }
     try {
       await updateCamera(saveData)
@@ -869,6 +892,9 @@ const handleAdd = async () => {
         username: cameraForm.username,
         password: cameraForm.password,
         channels: cameraForm.channels,
+        deviceId: cameraForm.deviceId,
+        channelId: cameraForm.channelId,
+        localChannelId: cameraForm.localChannelId,
         gateId: currentNode.value?.parent?.data?.id,
       }
       try {
@@ -1197,7 +1223,16 @@ const cameraRules = {
   entranceNo: [{ required: true, message: '请选择出入口编号', trigger: 'change' }],
   turnNo: [{ required: true, message: '请输入道闸编号', trigger: 'blur' },
   { pattern: /^\d{2}$/, message: '道闸编号必须是两位数字', trigger: 'blur' }
-  ]
+  ],
+  deviceId: [
+    { required: true, message: "国标编号不能为空", trigger: "blur" }
+  ],
+  channelId: [
+    { required: true, message: "国标通道编号不能为空", trigger: "blur" }
+  ],
+  localChannelId: [
+    { required: true, message: "nvr⾃⽤编号不能为空", trigger: "blur" }
+  ],
 }
 
 const gateRules = {
@@ -1314,6 +1349,46 @@ const filteredOptions = computed(() => {
   const type = Number(selectedCamType.value);
   return type <= 4 ? camOptionsGroups.normal : camOptionsGroups.single;
 });
+
+const handleAuthCamera = async () => {
+  try {
+    await formRef.value.validate()
+    const saveData = {
+      id: cameraForm.id,
+      companyId: currentNode.value?.parent?.data?.parentId,
+      cameraName: cameraForm.cameraName,
+      cameraBrand: cameraForm.cameraBrand,
+      cameraSn: cameraForm.cameraSn,
+      captureType: cameraForm.captureType,
+      gateType: cameraForm.gateType,
+      entranceNo: cameraForm.entranceNo,
+      turnNo: cameraForm.turnNo,
+      longitude: cameraForm.longitude,
+      latitude: cameraForm.latitude,
+      ip: cameraForm.ip,
+      port: cameraForm.port,
+      violationCamSn: cameraForm.violationCamSn,
+      screenBrand: cameraForm.screenBrand,
+      screenSn: cameraForm.screenSn,
+      username: cameraForm.username,
+      password: cameraForm.password,
+      channels: cameraForm.channels,
+      deviceId: cameraForm.deviceId,
+      channelId: cameraForm.channelId,
+      localChannelId: cameraForm.localChannelId
+    }
+    try {
+      await authCamera(saveData)
+      ElMessage.success('相机认证成功')
+      await handleRefresh()
+    } catch (error) {
+      console.error('相机认证失败:', error)
+      ElMessage.error('相机认证失败')
+    }
+  } catch (error) {
+    console.error('表单验证失败:', error)
+  }
+}
 
 </script>
 

@@ -64,3 +64,17 @@ export function reAuthLedger(ids) {
     method: 'get'
   })
 }
+
+export function getLatestRecord(companyId,casherId) {
+  return request({
+    url: `/transit/record/recent/${companyId}/${casherId}`,
+    method: 'get'
+  })
+}
+
+export function getstat(companyId) {
+  return request({
+    url: `/transit/record/stat/${companyId}`,
+    method: 'get'
+  })
+}

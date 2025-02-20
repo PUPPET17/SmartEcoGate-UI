@@ -465,13 +465,15 @@ const nextStep = async () => {
       };
 
       const res = await checkOffSiteVehicle(checkParams);
-      if (res.code === 200) {
+      if (res === "passed") {
         activeStep.value++;
       } else {
-        console.log("管控策略检查不通过", res);
         // 检查不通过，显示 MessageBox
         await ElMessageBox({
           title: '违反管控策略禁止注册',
+          message: `<div class="warning-message-content">
+            <div class="warning-title">规则名称:<span style="color: #f56c6c;">${res}</span></div>
+          </div>`,
           type: 'warning',
           showClose: false,
           closeOnClickModal: false,
@@ -593,7 +595,6 @@ async function getEnterpriseList() {
   try {
     const response = await selectIds(route.query.aid);
     enterpriseIds.value = [response.data];
-    console.log("企业信息：", enterpriseIds.value, form.value.companyId, response.data);
   } catch (error) {
     console.log("获取企业信息失败", error);
   }

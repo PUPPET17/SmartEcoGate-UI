@@ -10,30 +10,6 @@
             </el-tooltip>
           </el-form-item>
         </el-col>
-
-        <!-- <el-col :span="6">
-          <el-form-item label="企业评级" prop="level">
-            <el-input v-model="queryParams.level" placeholder="请输入企业评级" clearable @keyup.enter="handleQuery" />
-          </el-form-item>
-        </el-col>
-
-        <el-col :span="6">
-          <el-form-item label="禁行排放等级" prop="emissionState">
-            <el-select v-model="queryParams.emissionState" placeholder="请选择禁行排放等级" style="width: 180px;" clearable>
-              <el-option v-for="dict in emission_state" :key="dict.value" :label="dict.label" :value="dict.value">
-              </el-option>
-            </el-select>
-          </el-form-item>
-        </el-col> -->
-        <!-- <el-col :span="6">
-          <el-form-item label="联网状态" prop="isOnline" style="width: 100%; margin-bottom: 20px;">
-            <div class="custom-style">
-              <el-segmented v-model="queryParams.isOnline"
-                :options="is_online.map(dict => ({ label: dict.label, value: dict.value }))" />
-            </div>
-          </el-form-item>
-        </el-col> -->
-
         <el-col :span="18">
           <el-form-item>
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -130,7 +106,7 @@
           <dict-tag :options="is_regis" :value="scope.row.isRegis" />
         </template>
       </el-table-column> -->
-      <el-table-column label="企业分类" align="center" prop="classifi">
+      <el-table-column label="企业分类" align="center" prop="classifi" show-overflow-tooltip>
         <template #default="scope">
           <dict-tag :options="ei_classification" :value="scope.row.classifi?.toString()" />
         </template>
@@ -140,11 +116,11 @@
           <dict-tag :options="emission_state" :value="scope.row.emissionState" />
         </template>
       </el-table-column> -->
-      <el-table-column label="接口平台" align="center" prop="apiStrategy">
+      <!-- <el-table-column label="接口平台" align="center" prop="apiStrategy">
         <template #default="scope">
           <dict-tag :options="api_strategy" :value="scope.row.apiStrategy" />
         </template>
-      </el-table-column>
+      </el-table-column> -->
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
@@ -169,14 +145,6 @@
             </el-form-item>
           </el-col>
 
-          <!-- <el-col :span="12">
-            <el-form-item label="行政区划" prop="region">
-              <el-cascader v-model="selectedRegions" :options="regionOptions" :props="cascaderProps"
-                @change="handleRegionChange" placeholder="请选择行政区划" clearable style="width: 100%;" filterable
-                :show-all-levels="false" />
-            </el-form-item>
-          </el-col> -->
-
           <el-col :span="12">
             <el-form-item label="行政区划" prop="region">
               <el-select v-model="form.region" placeholder="请选择行政区划" clearable filterable>
@@ -186,27 +154,17 @@
             </el-form-item>
           </el-col>
 
-          <!-- <el-col :span="8">
-            <el-form-item label="创建时间" prop="createDate">
-              <el-date-picker clearable v-model="form.createDate" type="date" value-format="YYYY-MM-DD"
-                placeholder="请选择创建时间" />
-            </el-form-item>
-          </el-col> -->
-
           <el-col :span="12">
-            <el-form-item label="所属单位统一社会代码" prop="identifier">
+            <el-form-item label="所属单位统一" class="compact-form-item" prop="identifier">
+              <template #label>
+                <div class="compact-label">
+                  <div>所属单位统一</div>
+                  <div>社会代码</div>
+                </div>
+              </template>
               <el-input v-model="form.identifier" placeholder="请输入所属单位统一社会代码" />
             </el-form-item>
           </el-col>
-
-          <!-- <el-col :span="12">
-            <el-form-item label="是否接入接口平台" prop="isOnline" label-width="auto">
-              <el-radio-group v-model="form.isOnline">
-                <el-radio v-for="dict in is_online" :key="dict.value" :value="parseInt(dict.value)">{{ dict.label
-                  }}</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col> -->
 
           <el-col :span="12">
             <el-form-item label="企业地址" prop="address">
@@ -291,161 +249,208 @@
 
           <el-col :span="24">
             <el-form-item label="接口平台" prop="apiStrategy">
-              <el-radio-group v-model="form.apiStrategy" @change="handleStrategyChange">
-                <el-radio v-for="dict in api_strategy" :key="dict.value" :value="parseInt(dict.value)">{{ dict.label
-                  }}</el-radio>
-              </el-radio-group>
+              <el-checkbox-group v-model="selectedApiStrategies" @change="handleStrategyChange">
+                <el-checkbox v-for="dict in api_strategy" :key="dict.value" :label="parseInt(dict.value)"
+                  :disabled="isCheckboxDisabled(parseInt(dict.value))">
+                  {{ dict.label }}
+                </el-checkbox>
+              </el-checkbox-group>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
       <template v-if="form.apiStrategy">
         <el-divider content-position="left" border-style="solid">
-          {{ getPlatformTitle(form.apiStrategy) }}接口平台信息配置
+          接口平台信息配置
         </el-divider>
-
-        <!-- 香河 接口平台配置 -->
-        <el-row v-if="form.apiStrategy === 1" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="企业唯一代码" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.userName" placeholder="请输入企业唯一代码" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="企业编号" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.password" placeholder="请输入企业编号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="接口地址" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.remoteEp" placeholder="请输入接口地址" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="备用接口地址" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.alternateEp" placeholder="请输入备用接口地址" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="BT面板地址" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.btEp" placeholder="请输入BT面板地址" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="BT用户名" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.btUsername" placeholder="请输入BT用户名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="BT密码" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.btPassword" placeholder="请输入BT密码" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="远程控制码" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.remoteControlCode" placeholder="请输入远程控制码" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="临时密码" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform1.temporaryCode" placeholder="请输入远程控制临时密码" />
-            </el-form-item>
-          </el-col>
+        <el-row :gutter="20">
+          <!-- 平台4配置（天津） -->
+          <template v-if="selectedApiStrategies.includes(4)">
+            <el-divider content-position="right">天津</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="用户名" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform4.username" placeholder="请输入用户名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="密码" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform4.password" placeholder="请输入密码" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="SM2私钥" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform4.prksm2" placeholder="请输入SM2私钥" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="企业唯一编码" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform4.identifier" placeholder="请输入企业唯一编码" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="接口地址" label-width="120px" label-position="left">
+                  <el-radio-group v-model="platformConfig.platform4.isProd">
+                    <el-radio :value="1">测试</el-radio>
+                    <el-radio :value="2">正式</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
         </el-row>
 
-        <!-- 平台2配置 -->
-        <el-row v-if="form.apiStrategy === 2" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="用户名" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.username" placeholder="请输入用户名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="密码" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.password" placeholder="请输入密码" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="ClientId" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.clientId" placeholder="请输入ClientId" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="ClientSecret" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.clientSecret" placeholder="请输入clientSecret" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="RSA公钥" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.pukrsa" placeholder="请输入RSA公钥" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="RSA私钥" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.prkrsa" placeholder="请输入RSA私钥" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="SM2公钥" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.puksm2" placeholder="请输入SM2公钥" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="SM2私钥" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.prksm2" placeholder="请输入SM2私钥" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="CallerID" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform2.callerId" placeholder="请输入CallerID" />
-            </el-form-item>
-          </el-col>
+        <el-row :gutter="20">
+          <!-- 平台5配置（经开区） -->
+          <template v-if="selectedApiStrategies.includes(5)">
+            <el-divider content-position="right">经开区</el-divider>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="用户名" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform5.username" placeholder="请输入用户名" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="密码" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform5.password" placeholder="请输入密码" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="企业唯一编码" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform5.identifier" placeholder="请输入企业唯一编码" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="company-key" label-width="120px" label-position="left">
+                  <el-input v-model="platformConfig.platform5.companyKey" placeholder="请输入company-key" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="接口地址" label-width="120px" label-position="left">
+                  <el-radio-group v-model="platformConfig.platform5.isProd">
+                    <el-radio :value="1">测试</el-radio>
+                    <el-radio :value="2">正式</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
         </el-row>
-
-        <!-- 平台3配置 -->
-        <el-row v-if="form.apiStrategy === 3" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="用户名" label-width="80px" label-position="left">
-              <el-input v-model="platformConfig.platform3.username" placeholder="请输入用户名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="密码" label-width="80px" label-position="left">
-              <el-input v-model="platformConfig.platform3.password" placeholder="请输入密码" />
-            </el-form-item>
-          </el-col>
+        <el-row :gutter="20">
+          <template v-if="selectedApiStrategies.includes(1)">
+            <!-- 香河配置 -->
+            <el-col :span="12">
+              <el-form-item label="企业唯一代码" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.userName" placeholder="请输入企业唯一代码" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="企业编号" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.password" placeholder="请输入企业编号" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="接口地址" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.remoteEp" placeholder="请输入接口地址" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="备用接口地址" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.alternateEp" placeholder="请输入备用接口地址" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="24">
+              <el-form-item label="BT面板地址" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.btEp" placeholder="请输入BT面板地址" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="BT用户名" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.btUsername" placeholder="请输入BT用户名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="BT密码" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.btPassword" placeholder="请输入BT密码" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="远程控制码" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.remoteControlCode" placeholder="请输入远程控制码" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="临时密码" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform1.temporaryCode" placeholder="请输入远程控制临时密码" />
+              </el-form-item>
+            </el-col>
+          </template>
         </el-row>
+        <el-row :gutter="20">
+          <template v-if="selectedApiStrategies.includes(2)">
+            <!-- 唐山配置 -->
+            <el-col :span="12">
+              <el-form-item label="用户名" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.username" placeholder="请输入用户名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="密码" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.password" placeholder="请输入密码" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="ClientId" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.clientId" placeholder="请输入ClientId" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="ClientSecret" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.clientSecret" placeholder="请输入clientSecret" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="RSA公钥" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.pukrsa" placeholder="请输入RSA公钥" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="RSA私钥" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.prkrsa" placeholder="请输入RSA私钥" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="SM2公钥" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.puksm2" placeholder="请输入SM2公钥" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="SM2私钥" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.prksm2" placeholder="请输入SM2私钥" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="CallerID" label-width="100px" label-position="left">
+                <el-input v-model="platformConfig.platform2.callerId" placeholder="请输入CallerID" />
+              </el-form-item>
+            </el-col>
+          </template>
+        </el-row>
+        <el-row :gutter="20">
+          <template v-if="selectedApiStrategies.includes(3)">
+            <!-- 三门峡配置 -->
+            <el-col :span="12">
+              <el-form-item label="用户名" label-width="80px" label-position="left">
+                <el-input v-model="platformConfig.platform3.username" placeholder="请输入用户名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="密码" label-width="80px" label-position="left">
+                <el-input v-model="platformConfig.platform3.password" placeholder="请输入密码" />
+              </el-form-item>
+            </el-col>
 
-        <!-- 平台4配置 -->
-        <el-row v-if="form.apiStrategy === 4" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="用户名" label-width="80px" label-position="left">
-              <el-input v-model="platformConfig.platform4.username" placeholder="请输入用户名" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="密码" label-width="80px" label-position="left">
-              <el-input v-model="platformConfig.platform4.password" placeholder="请输入密码" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="SM2私钥" label-width="80px" label-position="left">
-              <el-input v-model="platformConfig.platform4.prksm2" placeholder="请输入SM2私钥" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="企业唯一编码" label-width="100px" label-position="left">
-              <el-input v-model="platformConfig.platform4.identifier" placeholder="请输入企业唯一编码" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="接口地址" label-width="80px" label-position="left">
-              <el-radio-group v-model="platformConfig.platform4.isProd">
-                <el-radio :value="1">测试</el-radio>
-                <el-radio :value="2">正式</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
+          </template>
         </el-row>
       </template>
 
@@ -569,43 +574,38 @@ const platformConfig = reactive({
     prksm2: '',
     puksm2: '',
     isProd: null
+  },
+  // 天津经开区 接口平台配置
+  platform5: {
+    id: '',
+    companyId: '',
+    identifier: '',
+    companyName: '',
+    companyKey: '',
+    username: '',
+    password: '',
+    isProd: null,
+    createDate: null
   }
 });
 
-// 校验单个平台的配置
-const validatePlatform = (platform, fields) => {
-  for (const [field, label] of fields) {
-    if (!platform[field]) {
-      proxy.$modal.msgError(`请输入${label}`);
-      return false;
-    }
+// 添加选中的接口平台数组
+const selectedApiStrategies = ref([]);
+
+// 计算最终的 apiStrategy
+const computeApiStrategy = (strategies) => {
+  // 当同时选中天津和经开区时（假设天津是4，经开区是5）
+  if (strategies.includes(4) && strategies.includes(5)) {
+    return 6;
   }
-  return true;
+  // 如果只选中一个，返回该值
+  return strategies.length === 1 ? strategies[0] : null;
 };
 
-// 校验接口平台配置信息
-const validatePlatformConfig = () => {
-  const strategy = form.value.apiStrategy;
-  if (!strategy) return true;
-
-  const validations = {
-    1: [['userName', '企业唯一代码']],
-    2: [
-      ['username', '用户名'],
-      ['password', '密码'],
-      ['callerId', 'callerId'],
-      ['pukrsa', 'RSA公钥'],
-      ['prkrsa', 'RSA私钥'],
-      ['puksm2', 'SM2公钥'],
-      ['prksm2', 'SM2私钥'],
-      ['clientId', '客户端ID'],
-      ['clientSecret', '客户端密钥']
-    ],
-    3: [['username', '用户名'], ['password', '密码']],
-    4: [['username', '用户名'], ['password', '密码'], ['prksm2', 'SM2私钥'], ['identifier', '企业唯一编码'], ['isProd', '是否启用正式环境']]
-  };
-
-  return validatePlatform(platformConfig[`platform${strategy}`], validations[strategy]);
+// 处理平台切换
+const handleStrategyChange = (value) => {
+  // 设置 form 的 apiStrategy
+  form.value.apiStrategy = computeApiStrategy(value);
 };
 
 /** 查询企业信息列表 */
@@ -628,6 +628,7 @@ function cancel() {
 // 表单重置
 function reset() {
   selectedRegions.value = null;
+  selectedApiStrategies.value = [];
   form.value = {
     id: null,
     companyName: null,
@@ -694,24 +695,50 @@ async function handleUpdate(row) {
   const selectedRow = infoList.value?.find(item => item.id === _id);
 
   try {
-    const apiResponse = await getAPIConfig(selectedRow.companyId, selectedRow.apiStrategy);
-    if (apiResponse.data.data && selectedRow.apiStrategy) {
-      const platform = `platform${selectedRow.apiStrategy}`;
-
-      platformConfig[platform] = {
-        ...platformConfig[platform],
-        ...apiResponse.data.data
-      };
-    }
+    // 获取企业基本信息
     const infoResponse = await getInfo(_id);
+    form.value = infoResponse.data;
+    form.value.region = infoResponse.data.region || null;
 
-    // 将 region 赋值给 form.region
-    form.value.region = infoResponse.data.region || null; // 确保是正确的值
-    form.value = { ...infoResponse.data, ...platformConfig[form.value.apiStrategy] };
+    // 如果是天津和经开区组合（apiStrategy = 6）
+    if (selectedRow.apiStrategy === 6) {
+      selectedApiStrategies.value = [4, 5]; // 设置多选框选中状态
+
+      // 获取天津的配置
+      const tjResponse = await getAPIConfig(selectedRow.companyId, 4);
+      if (tjResponse.data.data) {
+        platformConfig.platform4 = {
+          ...platformConfig.platform4,
+          ...tjResponse.data.data
+        };
+      }
+
+      // 获取经开区的配置
+      const jkResponse = await getAPIConfig(selectedRow.companyId, 5);
+      if (jkResponse.data.data) {
+        platformConfig.platform5 = {
+          ...platformConfig.platform5,
+          ...jkResponse.data.data
+        };
+      }
+    } else {
+      // 其他情况，获取单个平台的配置
+      selectedApiStrategies.value = [selectedRow.apiStrategy]; // 设置多选框选中状态
+      const apiResponse = await getAPIConfig(selectedRow.companyId, selectedRow.apiStrategy);
+      if (apiResponse.data.data && selectedRow.apiStrategy) {
+        const platform = `platform${selectedRow.apiStrategy}`;
+        platformConfig[platform] = {
+          ...platformConfig[platform],
+          ...apiResponse.data.data
+        };
+      }
+    }
+
     open.value = true;
     title.value = "修改企业信息";
   } catch (error) {
     console.error("获取信息时出错:", error);
+    proxy.$modal.msgError("获取信息失败: " + error.message);
   }
 }
 
@@ -732,8 +759,7 @@ function getQRCode(row) {
     const qrCodeData = response;
     console.log("QR code data:", qrCodeData);
     const blob = new Blob([qrCodeData], { type: 'image/png' });
-    const imageUrl = URL.createObjectURL(blob);
-    data.qrcode = imageUrl;
+    data.qrcode = URL.createObjectURL(blob);
     data.qrcodeDialogVisible = true;
   }).catch(error => {
     console.error("Failed to fetch QR code:", error);
@@ -782,31 +808,73 @@ function submitForm() {
   });
 }
 
-// 保存API配置的辅助函数
-async function saveApiConfig(companyId) {
-  const currentPlatform = `platform${form.value.apiStrategy}`;
-  const platformData = platformConfig[currentPlatform];
+// 校验单个平台的配置
+const validatePlatform = (platform, fields) => {
+  for (const [field, label] of fields) {
+    if (!platform[field]) {
+      proxy.$modal.msgError(`请输入${label}`);
+      return false;
+    }
+  }
+  return true;
+};
 
-  console.log("platformData:", form.value);
+// 校验接口平台配置信息
+const validatePlatformConfig = () => {
+  const strategies = selectedApiStrategies.value;
+  if (!strategies.length) return true;
 
-  // 设置公司相关信息
-  platformData.companyId = companyId;
-  platformData.identifier = form.value.identifier;
-
-  const submitData = {
-    apiStrategy: form.value.apiStrategy,
-    data: platformData
+  const validations = {
+    1: [['userName', '企业唯一代码']],
+    2: [
+      ['username', '用户名'],
+      ['password', '密码'],
+      ['callerId', 'callerId'],
+      ['pukrsa', 'RSA公钥'],
+      ['prkrsa', 'RSA私钥'],
+      ['puksm2', 'SM2公钥'],
+      ['prksm2', 'SM2私钥'],
+      ['clientId', '客户端ID'],
+      ['clientSecret', '客户端密钥']
+    ],
+    3: [['username', '用户名'], ['password', '密码']],
+    4: [['username', '用户名'], ['password', '密码'], ['prksm2', 'SM2私钥'], ['identifier', '企业唯一编码'], ['isProd', '是否启用正式环境']],
+    5: [['companyKey', 'company-key'], ['username', '用户名'], ['password', '密码'], ['identifier', '企业唯一编码'], ['isProd', '是否启用正式环境']]
   };
 
-  console.log("提交的API配置数据:", submitData);
+  // 检查每个选中的平台配置
+  return strategies.every(strategy =>
+    validatePlatform(platformConfig[`platform${strategy}`], validations[strategy])
+  );
+};
 
-  const response = await addApi(submitData);
+// 保存API配置的辅助函数
+async function saveApiConfig(companyId) {
+  const strategies = selectedApiStrategies.value;
 
-  if (response?.code !== 200) {
-    throw new Error(response?.message || "API配置添加失败");
+  // 保存每个选中平台的配置
+  for (const strategy of strategies) {
+    const platformData = platformConfig[`platform${strategy}`];
+
+    // 设置公司相关信息
+    platformData.companyId = companyId;
+    platformData.identifier = form.value.identifier;
+
+    const submitData = {
+      apiStrategy: strategy, // 使用原始的策略值
+      data: platformData
+    };
+
+    console.log(`提交平台${strategy}的API配置数据:`, submitData);
+
+    const response = await addApi(submitData);
+
+    if (response?.code !== 200) {
+      throw new Error(response?.message || `平台${strategy}的API配置添加失败`);
+    }
+
+    console.log(`平台${strategy}的API配置添加成功`);
   }
-
-  console.log("API配置添加成功");
 }
 
 /** 删除按钮操作 */
@@ -842,55 +910,11 @@ const getPlatformTitle = (strategy) => {
   return platform ? platform.label : '';
 };
 
-// 处理平台切换
-const handleStrategyChange = (value) => {
-  // 清空当前平台的配置
-  if (value) {
-    // const currentPlatform = `platform${value}`;
-    // 先不清空原配置
-    // Object.keys(platformConfig[currentPlatform]).forEach(key => {
-    //   platformConfig[currentPlatform][key] = '';
-    // });
-  }
-};
-
-/** 同步选中企业的token */
-function syncToken() {
-  const selectedRow = infoList.value.find(item => item.id === ids.value[0]);
-  if (!selectedRow) {
-    proxy.$modal.msgError("请选择要同步的企业");
-    return;
-  }
-
-  syncConfig(selectedRow.companyId)
-    .then(response => {
-      proxy.$modal.msgSuccess(`"${selectedRow.companyName}"同步token成功`);
-      console.log(`同步companyId ${selectedRow.companyId} token成功`);
-    })
-    .catch(error => {
-      proxy.$modal.msgError(`"${selectedRow.companyName}"同步token失败`);
-      console.error(`同步companyId ${selectedRow.companyId} token失败:`, error);
-    });
-}
-
 const regionOptions = ref([]);
 
 // 基础配置
 const baseUrl = import.meta.env.VITE_APP_BASE_API;
 const headers = { Authorization: "Bearer " + getToken() };
-
-// // 配置 el-cascader 的属性，启用懒加载
-// const cascaderProps = {
-//   lazy: true,
-//   lazyLoad(node, resolve) {
-//     const parent = node.value || null;
-//     fetchRegions(parent).then(data => resolve(data));
-//   },
-//   value: 'value',
-//   label: 'label',
-//   children: 'children',
-//   checkStrictly: true // 允许选择任意层级
-// }
 
 // 获取行政区划数据
 const fetchRegions = async (parent = null) => {
@@ -915,22 +939,27 @@ const fetchRegions = async (parent = null) => {
   }
 }
 
-// // 处理选择变化
-// const handleRegionChange = (value) => {
-//   console.log('选择变化:', value);
-//   // 只有当选择了三级（省市县）时才触发更新
-//   if (value && value.length === 3) {
-//     // 确保值保持字符串格式
-//     const stringValues = value.map(v => String(v));
-//     // 发出事件通知父组件
-//     queryParams.value.region = stringValues; // 更新查询参数
-//   }
-// }
-
 // 初始化加载根级数据
 fetchRegions().then(data => {
   regionOptions.value = data;
 });
+
+// 在script setup部分添加以下函数
+const isCheckboxDisabled = (value) => {
+  // 如果没有选中任何选项，则所有选项都可选
+  if (selectedApiStrategies.value.length === 0) {
+    return false;
+  }
+
+  // 如果当前选中的是天津(4)或经开区(5)
+  if (selectedApiStrategies.value.includes(4) || selectedApiStrategies.value.includes(5)) {
+    // 只允许选择天津(4)和经开区(5)
+    return value !== 4 && value !== 5;
+  }
+
+  // 如果选中了其他选项(1,2,3)，则禁用所有其他选项
+  return !selectedApiStrategies.value.includes(value);
+};
 
 getList();
 </script>
@@ -1301,5 +1330,20 @@ getList();
 
 .el-input.is-password :deep(.el-input__inner) {
   letter-spacing: 1px;
+}
+
+.compact-form-item :deep(.el-form-item__label) {
+  line-height: 1.2;
+  padding-bottom: 0;
+}
+
+.compact-label {
+  line-height: 1.2;
+  text-align: left;
+}
+
+.compact-label div {
+  margin: 0;
+  padding: 0;
 }
 </style>

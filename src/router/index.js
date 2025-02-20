@@ -119,6 +119,13 @@ export const constantRoutes = [
     meta: { title: '补录', icon: 'example' },
     hidden: true,
   },
+  {
+    path: '/monitor/gateway',
+    component: () => import('@/views/monitor/gateway/index.vue'),
+    name: 'GatewayMonitor',
+    meta: { title: '环保门禁监控' },
+    hidden: true,
+  }
  
 ]
 

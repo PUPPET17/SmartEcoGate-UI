@@ -37,7 +37,7 @@
       </div>
     </main>
     <footer class="footer">
-      <p>© 2024 车辆信息录入 保留所有权利.</p>
+      <p>© 2024-2025 车辆信息录入 保留所有权利.</p>
     </footer>
   </div>
 </template>

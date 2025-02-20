@@ -17,6 +17,14 @@ export function getInfo(id) {
   });
 }
 
+
+export function getCompanyInfo(id) {
+  return request({
+    url: "/system/info/c/" + id,
+    method: "get",
+  });
+}
+
 // 新增企业信息
 export function addInfo(data) {
   return request({

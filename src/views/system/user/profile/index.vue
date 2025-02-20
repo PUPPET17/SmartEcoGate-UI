@@ -1,8 +1,8 @@
 <template>
    <div class="app-container">
       <el-row :gutter="20">
-         <el-col :span="6" :xs="24">
-            <el-card class="box-card">
+         <!-- <el-col :span="6" :xs="24"> -->
+            <!-- <el-card class="box-card">
                <template v-slot:header>
                  <div class="clearfix">
                    <span>个人信息</span>
@@ -39,9 +39,9 @@
                      </li>
                   </ul>
                </div>
-            </el-card>
-         </el-col>
-         <el-col :span="18" :xs="24">
+            </el-card> -->
+         <!-- </el-col> -->
+         <el-col :span="10" :xs="24">
             <el-card>
                <template v-slot:header>
                  <div class="clearfix">

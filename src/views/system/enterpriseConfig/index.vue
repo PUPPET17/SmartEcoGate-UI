@@ -1,52 +1,38 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="120px">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="120px" class="search-form" label-position="left">
       <el-row :gutter="20">
-        <el-col :span="5">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5">
           <el-form-item label="企业名称" prop="companyId">
-            <el-select v-model="queryParams.companyId" placeholder="请选择企业" clearable style="width: 180px;">
+            <el-select v-model="queryParams.companyId" placeholder="请选择企业" clearable filterable>
               <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
                 :value="item.companyId" />
             </el-select>
           </el-form-item>
         </el-col>
-        <!-- <el-col :span="5">
-          <el-form-item label="禁行排放等级" prop="emissionState">
-            <el-select v-model="queryParams.emissionState" placeholder="请选择禁行排放等级" clearable style="width: 180px;">
-              <el-option v-for="dict in emission_state" :key="dict.value" :label="dict.label" :value="dict.value" />
-            </el-select>
-          </el-form-item>
-        </el-col> -->
-        <el-col :span="5">
-          <el-form-item label="二维码过期时间" prop="qrExpireTime">
-            <el-input v-model="queryParams.qrExpireTime" placeholder="请输入过期时间" clearable @keyup.enter="handleQuery"
-              style="width: 180px;" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="5">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5">
           <el-form-item label="违规记录上报" prop="violationAutoReport">
-            <el-select v-model="queryParams.violationAutoReport" placeholder="请选择违规记录上报" clearable
-              style="width: 180px;">
+            <el-select v-model="queryParams.violationAutoReport" placeholder="请选择违规记录上报" clearable>
               <el-option v-for="dict in int_yes_no" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="5">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5">
           <el-form-item label="违规报警" prop="violationAlarm">
-            <el-select v-model="queryParams.violationAlarm" placeholder="请选择违规报警" clearable style="width: 180px;">
+            <el-select v-model="queryParams.violationAlarm" placeholder="请选择违规报警" clearable>
               <el-option v-for="dict in int_yes_no" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="5">
+        <el-col :xs="24" :sm="12" :md="8" :lg="5">
           <el-form-item label="接入接口平台" prop="isOnline">
-            <el-select v-model="queryParams.isOnline" placeholder="请选择是否接入接口平台" clearable style="width: 180px;">
+            <el-select v-model="queryParams.isOnline" placeholder="请选择是否接入接口平台" clearable>
               <el-option v-for="dict in int_yes_no" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="6">
-          <el-form-item>
+        <el-col :xs="24" :sm="24" :md="24" :lg="6">
+          <el-form-item class="search-buttons">
             <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           </el-form-item>
@@ -55,15 +41,11 @@
     </el-form>
 
     <el-row :gutter="20" class="mb8">
-      <el-col :span="1.5">
+      <el-col :xs="24" :sm="24" :md="24" :lg="6" class="action-buttons">
         <el-button type="primary" plain icon="Plus" @click="handleAdd"
           v-hasPermi="['system:enterpriseConfig:add']">新增</el-button>
-      </el-col>
-      <el-col :span="1.5">
         <el-button type="success" plain icon="Edit" :disabled="single" @click="handleUpdate"
           v-hasPermi="['system:enterpriseConfig:edit']">修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
         <el-button type="danger" plain icon="Delete" :disabled="multiple" @click="handleDelete"
           v-hasPermi="['system:enterpriseConfig:remove']">删除</el-button>
       </el-col>
@@ -71,7 +53,7 @@
     </el-row>
 
     <el-row :gutter="20">
-      <el-col v-for="item in enterpriseConfigList" :key="item.id" :span="6">
+      <el-col v-for="item in enterpriseConfigList" :key="item.id" :xs="24" :sm="12" :md="8" :lg="6">
         <el-card class="box-card" shadow="hover">
           <template #header>
             <div class="card-header">
@@ -91,81 +73,73 @@
           </template>
           <div class="card-body">
             <el-row :gutter="10">
-              <el-col :span="8">
+              <el-col :xs="24" :sm="8" :span="8" class="action-col">
                 <div class="custom-btn" @click="getQRCode(item)">
-                  场外车辆录入
+                  <el-icon><Document /></el-icon>
+                  <span>场外车辆录入</span>
                 </div>
               </el-col>
-              <el-col :span="8">
+              <el-col :xs="24" :sm="8" :span="8" class="action-col">
                 <div class="custom-btn" @click="getDyQRCode(item)">
-                  入口临时录入
+                  <el-icon><Tickets /></el-icon>
+                  <span>入口临时录入</span>
                 </div>
               </el-col>
-              <el-col :span="8">
+              <el-col :xs="24" :sm="8" :span="8" class="action-col">
                 <div class="custom-btn" @click="getSupplementQr(item)">
-                  货物信息补录
+                  <el-icon><Edit /></el-icon>
+                  <span>货物信息补录</span>
                 </div>
               </el-col>
               <el-col :span="24">
-                <div class="info-item">
-                  <span class="label">
-                    <el-icon>
-                      <Warning />
-                    </el-icon>
-                    自动删除无效记录:
-                  </span>
-                  <dict-tag :options="int_yes_no" :value="item.emissionState" />
-                </div>
-              </el-col>
-              <el-col :span="24">
-                <div class="info-item">
-                  <span class="label">
-                    <el-icon>
-                      <Timer />
-                    </el-icon>
-                    二维码过期时间:
-                  </span>
-                  <span class="value">{{ item.qrExpireTime }} 秒</span>
-                </div>
-              </el-col>
-              <el-col :span="24">
-                <div class="info-item">
-                  <span class="label">
-                    <el-icon>
-                      <Bell />
-                    </el-icon>
-                    违规记录自动上传:
-                  </span>
-                  <dict-tag :options="is_auto_report" :value="item.violationAutoReport" />
-                </div>
-              </el-col>
-              <el-col :span="24">
-                <div class="info-item">
-                  <span class="label">
-                    <el-icon>
-                      <Bell />
-                    </el-icon>
-                    违规报警:
-                  </span>
-                  <dict-tag :options="int_yes_no" :value="item.violationAlarm" />
-                </div>
-              </el-col>
-              <el-col :span="24">
-                <div class="info-item">
-                  <span class="label">
-                    <el-icon>
-                      <Unlock />
-                    </el-icon>
-                    是否接入接口平台:
-                  </span>
-                  <dict-tag :options="int_yes_no" :value="item.isOnline" />
+                <div class="info-list">
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Warning /></el-icon>
+                      <span>自动删除无效记录</span>
+                    </span>
+                    <dict-tag :options="int_yes_no" :value="item.emissionState" />
+                  </div>
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Timer /></el-icon>
+                      <span>二维码过期时间</span>
+                    </span>
+                    <span class="value">{{ item.qrExpireTime }} 秒</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Bell /></el-icon>
+                      <span>违规记录自动上传</span>
+                    </span>
+                    <dict-tag :options="is_auto_report" :value="item.violationAutoReport" />
+                  </div>
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Bell /></el-icon>
+                      <span>违规报警</span>
+                    </span>
+                    <dict-tag :options="int_yes_no" :value="item.violationAlarm" />
+                  </div>
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Unlock /></el-icon>
+                      <span>是否接入接口平台</span>
+                    </span>
+                    <dict-tag :options="int_yes_no" :value="item.isOnline" />
+                  </div>
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Setting /></el-icon>
+                      <span>抓拍策略</span>
+                    </span>
+                    <dict-tag :options="snap_strategy" :value="item.snapStrategy" />
+                  </div>
                 </div>
               </el-col>
               <el-col :span="24">
                 <div class="card-footer" @click="openFullscreenDialog(item)">
-                  <el-icon>
-                    <Plus />
-                  </el-icon>
+                  <el-icon><Plus /></el-icon>
                   <span>禁行规则</span>
                 </div>
               </el-col>
@@ -174,6 +148,8 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
 
     <!-- 全屏对话框 -->
     <el-dialog v-model="fullscreenDialogVisible" :title="currentCompanyName + ' - 禁行规则管理'" :show-close="true"
@@ -426,6 +402,14 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
+          <el-col :span="24">
+            <el-form-item label="抓拍策略" prop="snapStrategy">
+              <el-select v-model="formData.snapStrategy" placeholder="请选择抓拍策略" clearable>
+                <el-option v-for="dict in snap_strategy" :key="dict.value" :label="dict.label"
+                  :value="dict.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
       <template #footer>
@@ -613,12 +597,12 @@ import { listEnterpriseConfig, getEnterpriseConfig, delEnterpriseConfig, addEnte
 import { selectIds, getStaticQrCode, getSupplementQrCode, getDynamicQrCode, syncConfig } from "@/api/system/info";
 import { listForbiddenRule, getForbiddenRule, delForbiddenRule, addForbiddenRule, updateForbiddenRule, exportForbiddenRule } from "@/api/system/forbiddenRule";
 import { queryLatestControl } from "@/api/system/measure";
-import { Edit, Unlock, Warning, Timer, Bell, Plus, Refresh } from '@element-plus/icons-vue'
+import { Edit, Unlock, Warning, Timer, Bell, Plus, Refresh, Document, Tickets } from '@element-plus/icons-vue'
 
 const { proxy } = getCurrentInstance();
-const { is_auto_report, emission_state, int_yes_no, plate_color, emission_standard, fuel_type, vehicle_type, classify_title } = proxy.useDict(
+const { is_auto_report, emission_state, int_yes_no, plate_color, emission_standard, fuel_type, vehicle_type, classify_title, snap_strategy } = proxy.useDict(
   'is_regis', 'is_auto_report', 'is_auto_open', 'emission_state', 'int_yes_no',
-  'plate_color', 'emission_standard', 'fuel_type', 'vehicle_type', 'classify_title'
+  'plate_color', 'emission_standard', 'fuel_type', 'vehicle_type', 'classify_title', 'snap_strategy'
 );
 
 const enterpriseConfigList = ref([]);
@@ -661,7 +645,9 @@ const data = reactive({
     emissionState: null,
     qrExpireTime: null,
     violationAutoReport: null,
-    violationAlarm: null
+    violationAlarm: null,
+    snapStrategy: null,
+    isOnline: null
   },
   rules: {
     companyId: [
@@ -687,6 +673,9 @@ const data = reactive({
     ],
     isOnline: [
       { required: true, message: "请选择是否接入接口平台", trigger: "change" }
+    ],
+    snapStrategy: [
+      { required: true, message: "请选择抓拍策略", trigger: "change" }
     ]
   },
   qrcodeDialogVisible: false,
@@ -739,6 +728,7 @@ function reset() {
     qrExpireTime: null,
     violationAutoReport: null,
     violationAlarm: null,
+    snapStrategy: null,
     isOnline: null
   };
   proxy.resetForm("enterpriseConfigRef");
@@ -747,7 +737,7 @@ function reset() {
 /** 搜索按钮操作 */
 function handleQuery() {
   queryParams.value.pageNum = 1;
-  getRuleList();
+  getList();
 }
 
 /** 重置按钮操作 */
@@ -755,8 +745,6 @@ function resetQuery() {
   proxy.resetForm("queryRef");
   handleQuery();
 }
-
-// 多选框选中数据
 
 /** 新增按钮操作 */
 function handleAdd() {
@@ -1414,7 +1402,219 @@ const getFullTagContent = (values, options) => {
 </script>
 
 <style scoped>
-/* 添加 transform 和 will-change 属性，启用GPU加速 */
+/* 移动端适配样式 */
+.search-form {
+  margin-bottom: 1rem;
+}
+
+.search-form :deep(.el-select) {
+  width: 200px;
+}
+
+.search-form :deep(.el-input) {
+  width: 200px;
+}
+
+@media screen and (max-width: 768px) {
+  .search-form :deep(.el-form-item) {
+    margin-bottom: 1rem;
+  }
+
+  .search-form :deep(.el-form-item__label) {
+    width: auto !important;
+    text-align: left;
+    margin-bottom: 0.5rem;
+  }
+
+  .search-form :deep(.el-select),
+  .search-form :deep(.el-input) {
+    width: 200px !important;
+  }
+
+  .search-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+
+  .action-buttons .el-button {
+    margin: 0;
+  }
+
+  .box-card {
+    margin-bottom: 1rem;
+  }
+
+  .card-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .info-item {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0.8rem;
+    margin-bottom: 0.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .info-item .label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #606266;
+    font-size: 0.95rem;
+    min-width: auto;
+    width: auto !important;
+    flex: 1;
+  }
+
+  .info-item .value,
+  .info-item :deep(.el-tag) {
+    font-size: 0.9rem;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  .info-list {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  .info-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .info-item:active {
+    background: #f8fafc;
+  }
+
+  .info-item .label .el-icon {
+    font-size: 1.1rem;
+    color: var(--el-color-primary);
+    margin-right: 0;
+    flex-shrink: 0;
+  }
+
+  .info-item .label span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .custom-btn {
+    height: auto;
+    min-height: 45px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #f0f7ff 0%, #e6f1ff 100%);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+
+  .custom-btn:active {
+    transform: scale(0.98);
+  }
+
+  .custom-btn .el-icon {
+    font-size: 1.2rem;
+    color: var(--el-color-primary);
+  }
+
+  .card-footer {
+    margin-top: 1rem;
+    margin-bottom: 0;
+    padding: 0.8rem;
+    background: #f0f7ff;
+    border-radius: 8px;
+    font-weight: 500;
+    gap: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .card-footer:active {
+    background: #e6f1ff;
+    transform: scale(0.98);
+  }
+
+  .card-footer .el-icon {
+    font-size: 1.1rem;
+    margin-right: 0;
+  }
+
+  .qrcode-wrapper {
+    width: 100%;
+  }
+
+  .qrcode-image {
+    width: 100%;
+    height: auto;
+    max-width: 310px;
+  }
+
+  .custom-dialog {
+    width: 90%;
+    max-width: 360px;
+  }
+
+  .dialog-body {
+    padding: 1rem;
+  }
+
+  .time-range,
+  .date-range {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .time-separator {
+    display: none;
+  }
+
+  :deep(.el-time-picker),
+  :deep(.el-date-picker) {
+    width: 100% !important;
+  }
+}
+
+/* 平板适配 */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .box-card {
+    margin-bottom: 1.5rem;
+  }
+
+  .info-item {
+    padding: 0.5rem;
+  }
+
+  .custom-btn {
+    font-size: 0.9rem;
+  }
+}
+
+/* 保持原有样式 */
 .box-card {
   margin-bottom: 10px;
   transition: all 0.3s;
@@ -1426,7 +1626,6 @@ const getFullTagContent = (values, options) => {
   box-shadow: 0 4px 12px rgba(85, 85, 85, 0.3);
 }
 
-/* 避免频繁改变布局属性 */
 .card-header {
   display: flex;
   align-items: center;
@@ -1495,7 +1694,6 @@ const getFullTagContent = (values, options) => {
   --el-border-radius-base: 12px;
 }
 
-/* 优化动画性能 */
 .dialog-fade-enter-active,
 .dialog-fade-leave-active {
   transition: opacity 0.3s ease;
@@ -1511,7 +1709,6 @@ const getFullTagContent = (values, options) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 8px;
   font-size: 14px;
   background-color: #f0f7ff;
   color: #409EFF;
@@ -1519,15 +1716,10 @@ const getFullTagContent = (values, options) => {
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid #d9ecff;
-  /* 修改这里，设置固定宽度 */
   width: 100%;
-  /* 根据最长的按钮文字设置合适的宽度 */
   height: 45px;
-  /* 统一高度 */
   overflow: hidden;
-  /* 防止文字溢出 */
   text-overflow: ellipsis;
-  /* 文字溢出时显示省略号 */
 }
 
 .custom-btn:hover {
@@ -1888,13 +2080,11 @@ const getFullTagContent = (values, options) => {
   will-change: transform;
 }
 
-/* 优化表格性能 */
 .el-table {
   transform: translateZ(0);
   will-change: transform;
 }
 
-/* 优化动画元素 */
 .qrcode-image,
 .download-button,
 .custom-btn {
@@ -1902,7 +2092,6 @@ const getFullTagContent = (values, options) => {
   will-change: transform;
 }
 
-/* 使用 CSS 变量优化动态样式计算 */
 :root {
   --transition-duration: 0.3s;
   --primary-color: #409EFF;
@@ -1910,7 +2099,6 @@ const getFullTagContent = (values, options) => {
   --border-color: #ebeef5;
 }
 
-/* 优化动画性能 */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -1956,7 +2144,6 @@ const getFullTagContent = (values, options) => {
   padding: 8px;
 }
 
-/* 确保时间选择器和日期选择器的宽度合适 */
 :deep(.el-time-picker),
 :deep(.el-date-picker) {
   width: 140px;
@@ -1972,22 +2159,14 @@ const getFullTagContent = (values, options) => {
 
 .custom-tooltip {
   background-color: #f5f5f5;
-  /* 背景颜色 */
   border: 1px solid #dcdfe6;
-  /* 边框颜色 */
   border-radius: 4px;
-  /* 圆角 */
   padding: 8px;
-  /* 内边距 */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  /* 阴影效果 */
   color: #333;
-  /* 字体颜色 */
   font-size: 14px;
-  /* 字体大小 */
 }
 
 .custom-tooltip .el-tooltip__popper {
-  /* 额外的样式可以在这里添加 */
 }
 </style>

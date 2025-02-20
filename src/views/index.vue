@@ -1,28 +1,27 @@
 <template>
-  <el-row>
-
-    <el-col :span="6" class="card-box">
+  <el-row :gutter="10">
+    <el-col :xs="24" :sm="24" :md="6" class="card-box">
       <el-card class="custom-card">
         <template #header>
           <span>接入流程</span>
         </template>
         <VueFlow :nodes="nodes" :edges="edges" class="flow-chart">
           <Background pattern-color="#aaa" :gap="14" variant="dots" />
-          <MiniMap />
+          <MiniMap class="hide-on-mobile" />
         </VueFlow>
       </el-card>
     </el-col>
 
-    <el-col :span="9" class="card-box">
-        <el-card class="custom-card">
-          <template #header>
-            <span>离线日志</span>
-          </template>
-          <OfflineLog />
-        </el-card>
+    <el-col :xs="24" :sm="24" :md="9" class="card-box">
+      <el-card class="custom-card">
+        <template #header>
+          <span>离线日志</span>
+        </template>
+        <OfflineLog />
+      </el-card>
     </el-col>
 
-    <el-col :span="9" class="card-box">
+    <el-col :xs="24" :sm="24" :md="9" class="card-box">
       <el-card class="custom-card fixed-height-card" style="margin-bottom: 10px;">
         <template #header>
           <div class="card-header-with-button">
@@ -32,16 +31,16 @@
 
         <el-form>
           <el-row :gutter="10">
-            <el-col :span="14">
-              <el-form-item label="企业名称" prop="companyId">
-                <el-select v-model="selectedCompanyId" placeholder="请选择企业" clearable filterable>
+            <el-col :xs="24" :sm="14">
+              <el-form-item label="企业名称" prop="companyId" class="mobile-form-item">
+                <el-select v-model="selectedCompanyId" placeholder="请选择企业" clearable filterable class="full-width-select">
                   <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
                     :value="item.companyId" />
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item>
+            <el-col :xs="24" :sm="10">
+              <el-form-item class="mobile-form-item">
                 <el-switch v-model="showOfflineOnly" active-text="仅离线" inactive-text="全部" />
               </el-form-item>
             </el-col>
@@ -59,28 +58,29 @@
           </div>
         </div>
       </el-card>
+
       <el-card class="custom-card fixed-height-card" style="margin-top: 10px;">
         <template #header>
           <div class="card-header-with-button">
             <span>最新管控措施</span>
-            <el-button type="primary" link icon="Plus" @click="goToControlRule">管理管控规则</el-button>
+            <el-button type="primary" link icon="Plus" @click="goToControlRule" class="mobile-button">管理管控规则</el-button>
           </div>
         </template>
 
         <el-form>
           <el-row :gutter="10">
-            <el-col :span="14">
-              <el-form-item label="企业名称" prop="companyId">
-                <el-select v-model="selectedControlCompanyId" placeholder="请选择企业" clearable filterable>
+            <el-col :xs="24" :sm="14">
+              <el-form-item label="企业名称" prop="companyId" class="mobile-form-item">
+                <el-select v-model="selectedControlCompanyId" placeholder="请选择企业" clearable filterable class="full-width-select">
                   <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
                     :value="item.companyId" />
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item>
+            <el-col :xs="24" :sm="10">
+              <el-form-item class="mobile-form-item">
                 <el-button type="info" plain icon="InfoFilled" @click="getLatestControl(selectedControlCompanyId)"
-                  :disabled="!selectedControlCompanyId">查询最新管控</el-button>
+                  :disabled="!selectedControlCompanyId" class="full-width-button">查询最新管控</el-button>
               </el-form-item>
             </el-col>
           </el-row>
@@ -279,7 +279,6 @@ const getInterfaceStatus = async () => {
       cameraReqList: cameraList.value
     };
     const response = await isAlive(req);
-    console.log("API 响应：", response);
     interfaceStatus.value = response;
   } catch (error) {
     console.error('获取接口状态失败:', error);
@@ -675,5 +674,137 @@ const goToControlRule = () => {
 .el-empty {
   padding: 0;
   margin: 0;
+}
+
+/* 移动端适配样式 */
+@media screen and (max-width: 768px) {
+  .card-box {
+    margin-top: 10px;
+  }
+
+  .custom-card {
+    margin-bottom: 10px;
+  }
+
+  .flow-chart {
+    height: 50vh;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .mobile-form-item {
+    margin-bottom: 10px;
+  }
+
+  .full-width-select {
+    width: 100%;
+  }
+
+  .full-width-button {
+    width: 100%;
+  }
+
+  .mobile-button {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  .status-item {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .status-time {
+    align-self: flex-start;
+    margin-left: 20px;
+  }
+
+  .el-descriptions {
+    width: 100%;
+  }
+
+  .el-descriptions__cell {
+    padding: 8px !important;
+  }
+
+  .measure-item {
+    flex-direction: column;
+    margin-bottom: 8px;
+  }
+
+  .measure-label {
+    margin-bottom: 4px;
+  }
+
+  .card-header-with-button {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .scrollable-content {
+    max-height: 40vh;
+  }
+
+  /* 优化表单在移动端的显示 */
+  :deep(.el-form-item__label) {
+    float: none;
+    display: block;
+    text-align: left;
+    margin-bottom: 8px;
+  }
+
+  :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+
+  /* 优化switch在移动端的显示 */
+  :deep(.el-switch__label) {
+    font-size: 12px;
+  }
+}
+
+/* 添加平滑过渡效果 */
+.el-col {
+  transition: all 0.3s ease-in-out;
+}
+
+.custom-card {
+  transition: all 0.3s ease-in-out;
+}
+
+/* 优化滚动条样式 */
+.scrollable-content {
+  scrollbar-width: thin;
+  scrollbar-color: #909399 #f4f4f5;
+}
+
+.scrollable-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+  background: #f4f4f5;
+  border-radius: 3px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+  background: #909399;
+  border-radius: 3px;
+}
+
+/* 优化加载状态显示 */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 </style>

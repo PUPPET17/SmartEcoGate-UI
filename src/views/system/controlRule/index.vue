@@ -3,7 +3,7 @@
         <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
             <el-col :span="5">
                 <el-form-item label="企业名称" prop="companyId">
-                    <el-select v-model="queryParams.companyId" placeholder="请选择企业" clearable style="width: 200px;">
+                    <el-select v-model="queryParams.companyId" placeholder="请选择企业" clearable style="width: 200px;" filterable>
                         <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
                             :value="item.companyId" />
                     </el-select>

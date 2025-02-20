@@ -42,3 +42,20 @@ export function delCamera(id) {
     method: 'delete'
   })
 }
+
+// 认证相机
+export function authCamera(data) {
+  return request({
+    url: '/system/camera/auth',
+    method: 'post',
+    data: data
+  })
+}
+
+// 获取相机信息
+export function getCameraInfoByCompanyId(companyId) {
+  return request({
+    url: '/system/camera/c/' + companyId,
+    method: 'get'
+  })
+}

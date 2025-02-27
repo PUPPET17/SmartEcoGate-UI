@@ -619,6 +619,25 @@ function getList() {
   });
 }
 
+/** 同步选中企业的token */
+function syncToken() {
+  const selectedRow = infoList.value.find(item => item.id === ids.value[0]);
+  if (!selectedRow) {
+    proxy.$modal.msgError("请选择要同步的企业");
+    return;
+  }
+
+  syncConfig(selectedRow.companyId)
+    .then(response => {
+      proxy.$modal.msgSuccess(`"${selectedRow.companyName}"同步token成功`);
+      console.log(`同步companyId ${selectedRow.companyId} token成功`);
+    })
+    .catch(error => {
+      proxy.$modal.msgError(`"${selectedRow.companyName}"同步token失败`);
+      console.error(`同步companyId ${selectedRow.companyId} token失败:`, error);
+    });
+}
+
 // 取消按钮
 function cancel() {
   open.value = false;

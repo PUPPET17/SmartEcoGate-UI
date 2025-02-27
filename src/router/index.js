@@ -121,12 +121,47 @@ export const constantRoutes = [
   },
   {
     path: '/monitor/gateway',
-    component: () => import('@/views/monitor/gateway/index.vue'),
+    component: () => import('@/views/monitor/gateway/index'),
     name: 'GatewayMonitor',
-    meta: { title: '环保门禁监控' },
+    meta: { title: '数字大屏', icon: 'monitor' }
+  },
+  {
+    path: '/algorithm',
+    component: Layout,
+    name: 'Algorithm',
+    meta: { title: '算法可视化', icon: 'chart' },
     hidden: true,
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/algorithm/index.vue'),
+        name: 'AlgorithmIndex',
+        meta: { title: '算法列表' },
+        hidden: true,
+      },
+      {
+        path: 'dijkstra',
+        component: () => import('@/views/algorithm/dijkstra/index.vue'),
+        name: 'Dijkstra',
+        meta: { title: 'Dijkstra 最短路径算法' },
+        hidden: true,
+      },
+      {
+        path: 'astar',
+        component: () => import('@/views/algorithm/astar/index.vue'),
+        name: 'AStar',
+        meta: { title: 'A* 寻路算法' },
+        hidden: true,
+      },
+      {
+        path: 'pixelate',
+        component: () => import('@/views/algorithm/pixelate.vue'),
+        name: 'Pixelate',
+        meta: { title: '图片像素化' },
+        hidden: true,
+      }
+    ]
   }
- 
 ]
 
 // 动态路由，基于用户权限动态去加载

@@ -738,6 +738,7 @@ const handleNodeClick = async (data, node) => {
       cameraForm[key] = null
     })
     cameraForm.gateId = data.parentId
+    console.log("111 + ", cameraForm.gateId)
     return
   }
 
@@ -801,6 +802,7 @@ const handleUpdate = async () => {
     }
   } else if (selectedType.value === 'camera') {
     await formRef.value.validate()
+    console.log("111 + ", cameraForm.gateId)
     const saveData = {
       id: cameraForm.id,
       companyId: currentNode.value?.parent?.data?.parentId,
@@ -823,7 +825,8 @@ const handleUpdate = async () => {
       channels: cameraForm.channels,
       deviceId: cameraForm.deviceId,
       channelId: cameraForm.channelId,
-      localChannelId: cameraForm.localChannelId
+      localChannelId: cameraForm.localChannelId,
+      gateId: cameraForm.gateId
     }
     try {
       await updateCamera(saveData)

@@ -1,5 +1,36 @@
 <template>
-  <div class="gateway-monitor">
+  <!-- 添加公司选择对话框 -->
+  <el-dialog
+    v-model="showCompanySelector"
+    title="选择公司"
+    width="30%"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :show-close="false"
+  >
+    <el-form>
+      <el-form-item label="选择公司">
+        <el-select v-model="selectedCompanyId" placeholder="请选择公司" style="width: 100%">
+          <el-option
+            v-for="company in companyList"
+            :key="company.companyId"
+            :label="company.companyName"
+            :value="company.companyId"
+          />
+        </el-select>
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button type="primary" @click="handleCompanySelect" :disabled="!selectedCompanyId">
+          确认
+        </el-button>
+      </span>
+    </template>
+  </el-dialog>
+
+  <!-- 原有的大屏内容 -->
+  <div v-if="!showCompanySelector" class="gateway-monitor">
     <!-- 顶部标题 -->
     <div class="header">
       <div class="left">
@@ -55,9 +86,18 @@
                 <div class="card-content">
                   <div class="image-section">
                     <template v-if="!item.isPlaying">
-                      <img :src="item.image" alt="监控画面" />
+                      <el-image 
+                        :src="item.latestRecord?.bodyImg" 
+                        alt="监控画面"
+                        fit="cover"
+                        style="width: 100%; height: 100%;"
+                        :preview-src-list="[item.latestRecord?.bodyImg]"
+                        :initial-index="0"
+                        :preview-teleported="true"
+                        :hide-on-click-modal="false"
+                      />
                       <div class="image-overlay">
-                        <span class="time-badge">{{ item.recognitionTime }}</span>
+                        <span class="time-badge">{{ formatTime(item.latestRecord?.passTime) }}</span>
                       </div>
                     </template>
                     <template v-else>
@@ -78,36 +118,34 @@
                     <div class="info">
                       <div class="info-grid">
                         <template v-if="!item.isPlaying && item.latestRecord">
-                        <div class="info-item">
-                          <span class="label">车牌号码</span>
-                          <span class="value">{{ item.plateNumber }}</span>
-                        </div>
-                        <div class="info-item">
-                          <span class="label">排放标准</span>
-                          <span class="value">{{ item.emissionStandard }}</span>
-                        </div>
-                        <div class="info-item">
-                          <span class="label">识别时间</span>
-                          <span class="value">{{ item.recognitionTime }}</span>
-                        </div>
-                        
-                          <div class="info-item latest-record">
-                            <span class="label">最新通行</span>
+                          <div class="info-item">
+                            <span class="label">车牌号码</span>
                             <span class="value">{{ item.latestRecord.plateNumber }}</span>
                           </div>
-                          <div class="info-item latest-record">
+                          <div class="info-item">
                             <span class="label">通行时间</span>
-                            <span class="value">{{ item.latestRecord.passTime }}</span>
+                            <span class="value">{{ formatTime(item.latestRecord.passTime) }}</span>
                           </div>
-                          <div class="info-item latest-record">
+                          <div class="info-item">
                             <span class="label">通行方向</span>
                             <span class="value">{{ item.latestRecord.direction }}</span>
                           </div>
-                          <div class="info-item latest-record">
+                          <div class="info-item">
                             <span class="label">通行结果</span>
-                            <span class="value" :class="item.latestRecord.result === '允许通行' ? 'success' : 'danger'">
-                              {{ item.latestRecord.result }}
+                            <span class="value" :class="item.latestRecord.accessState === '允许通行' ? 'success' : 'danger'">
+                              {{ item.latestRecord.accessState }}
                             </span>
+                          </div>
+                          <div class="vehicle-image">
+                            <el-image 
+                              :src="item.latestRecord.plateImg"
+                              :preview-src-list="[item.latestRecord.plateImg]"
+                              fit="contain"
+                              style="width: 100%; height: 80px;"
+                              :initial-index="0"
+                              :preview-teleported="true"
+                              :hide-on-click-modal="false"
+                            />
                           </div>
                         </template>
                         <template v-else>
@@ -264,13 +302,12 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import Screenfull from '@/components/Screenfull'
 import { Upload, Document, Open, Close, Warning, Refresh, VideoPlay } from '@element-plus/icons-vue'
 import { ElNotification } from 'element-plus'
 import { Chart } from 'chart.js/auto'
-import { getCompanyInfo, isAlive } from '@/api/system/info'
+import { getCompanyInfo, isAlive, selectIds } from '@/api/system/info'
 import { getCameraInfoByCompanyId } from '@/api/system/camera'
 import { queryLatestControl } from '@/api/system/measure'
 import { getLatestRecord, getstat } from '@/api/transit/record'
@@ -283,8 +320,6 @@ export default {
     VideoPlayer
   },
   setup() {
-    const route = useRoute()
-    const router = useRouter()
     const currentTime = ref('')
     const phone = ref('')
     const chartRef = ref(null)
@@ -394,21 +429,81 @@ export default {
       return chunks
     })
 
-    // 验证并获取企业信息
-    const fetchCompanyInfo = async () => {
-      const companyId = route.query.companyId
-      if (!companyId) {
+    // 添加新的响应式变量
+    const showCompanySelector = ref(true)
+    const selectedCompanyId = ref('')
+    const companyList = ref([])
+
+    const refreshInterval = ref(null) // 添加定时器引用
+
+    // 获取公司列表
+    const fetchCompanyList = async () => {
+      try {
+        const response = await selectIds()
+        if (response.code === 200) {
+          companyList.value = response.rows
+          
+          // 如果只有一个公司，自动选择它
+          if (companyList.value.length === 1) {
+            selectedCompanyId.value = companyList.value[0].companyId
+            // 直接调用选择处理方法
+            await handleCompanySelect()
+          } else if (companyList.value.length > 1) {
+            // 多个公司时显示选择对话框
+            showCompanySelector.value = true
+          } else {
+            // 没有公司时显示提示
+            ElNotification({
+              title: '提示',
+              message: '没有可用的公司数据',
+              type: 'warning'
+            })
+          }
+        } else {
+          ElNotification({
+            title: '错误',
+            message: '获取公司列表失败',
+            type: 'error'
+          })
+        }
+      } catch (error) {
+        console.error('获取公司列表失败:', error)
         ElNotification({
           title: '错误',
-          message: '缺少必要的企业ID参数',
+          message: '获取公司列表失败',
           type: 'error'
         })
-        router.push('/')
-        return
       }
+    }
 
+    // 处理公司选择
+    const handleCompanySelect = async () => {
+      if (selectedCompanyId.value) {
+        showCompanySelector.value = false
+        
+        // 等待 DOM 更新完成后再初始化图表
+        await nextTick()
+        
+        // 先初始化图表
+        initChart()
+        initPieChart()
+        
+        // 然后获取数据
+        await fetchCompanyInfo()
+        await Promise.all([
+          fetchLatestControl(),
+          fetchStatData()
+        ])
+
+        // 启动自动刷新
+        startAutoRefresh()
+      }
+    }
+
+    // 验证并获取企业信息
+    const fetchCompanyInfo = async () => {
       try {
-        const response = await getCompanyInfo(companyId)
+        const response = await getCompanyInfo(selectedCompanyId.value)
         if (response.code === 200 && response.data) {
           const { companyName: name, address, legalRpst, identifier, region, level } = response.data
           companyName.value = name
@@ -422,10 +517,10 @@ export default {
             level: level
           }
           // 获取企业信息成功后，获取门禁信息
-          await fetchGateInfo(companyId)
+          await fetchGateInfo(selectedCompanyId.value)
         }
       } catch (error) {
-        console.log(error)
+        console.error('获取企业信息失败:', error)
         ElNotification({
           title: '错误',
           message: '获取企业信息失败',
@@ -436,118 +531,120 @@ export default {
 
     // 获取门禁信息
     const fetchGateInfo = async (companyId) => {
-      loading.value = true;
+      loading.value = true
       try {
-        queryParams.value.companyId = companyId;
-        const response = await getCameraInfoByCompanyId(companyId);
+        queryParams.value.companyId = companyId
+        const response = await getCameraInfoByCompanyId(companyId)
+        console.log('cameraInfo response', response)
 
         if (response.code === 200 && response.rows) {
+          // 过滤掉 captureType 为 2 和 4 的相机
+          const filteredCameras = response.rows.filter(camera => 
+            camera.captureType !== '2' && camera.captureType !== '4'
+          )
+          
           // 构建 isAlive 请求参数
           const aliveRequestData = {
             enterpriseReqList: [{
               companyId: companyId,
               companyName: companyName.value,
-              apiStrategy: 2
+              apiStrategy: null,
             }],
             cameraReqList: response.rows
-          };
+          }
 
           // 获取设备在线状态
-          const aliveResponse = await isAlive(aliveRequestData);
-          const aliveStatusMap = new Map();
+          const aliveResponse = await isAlive(aliveRequestData)
+          const aliveStatusMap = new Map()
 
           if (Array.isArray(aliveResponse)) {
-
             // 先过滤出设备类型的数据（type === 2）
-            const deviceStatuses = aliveResponse.filter(item => item.type === 2);
+            const deviceStatuses = aliveResponse.filter(item => item.type === 2)
 
             // 存储设备状态
             deviceStatuses.forEach(item => {
-              aliveStatusMap.set(item.name, item.status);
-            });
+              aliveStatusMap.set(item.name, item.status)
+            })
 
             // 更新统计卡片数据
-            const onlineDevices = deviceStatuses.filter(item => item.status).length;
-            const offlineDevices = deviceStatuses.filter(item => !item.status).length;
-            const enterpriseStatus = aliveResponse.find(item => item.type === 1)?.status || false;
+            const onlineDevices = deviceStatuses.filter(item => item.status).length
+            const offlineDevices = deviceStatuses.filter(item => !item.status).length
+            const enterpriseStatus = aliveResponse.find(item => item.type === 1)?.status || false
 
-            statsCards.value[0].value = onlineDevices;
-            statsCards.value[1].value = offlineDevices;
-            statsCards.value[2].value = enterpriseStatus ? '在线' : '离线';
-            statsCards.value[2].iconColor = enterpriseStatus ? 'text-green-500' : 'text-red-500';
-            statsCards.value[3].value = response.rows.length;
+            // 更新统计卡片
+            statsCards.value[0].value = onlineDevices
+            statsCards.value[1].value = offlineDevices
+            statsCards.value[2].value = enterpriseStatus ? '在线' : '离线'
+            statsCards.value[2].iconColor = enterpriseStatus ? 'text-green-500' : 'text-red-500'
+            statsCards.value[3].value = response.rows.length
+
+            // 更新饼图数据
+            if (doughnutChart) {
+              console.log('更新饼图数据', [onlineDevices, offlineDevices])
+              doughnutChart.data.datasets[0].data = [onlineDevices, offlineDevices]
+              doughnutChart.update()
+            } else {
+              console.error('饼图实例不存在，重新初始化')
+              await nextTick()
+              initPieChart()
+              if (doughnutChart) {
+                doughnutChart.data.datasets[0].data = [onlineDevices, offlineDevices]
+                doughnutChart.update()
+              }
+            }
           }
 
-          // 使用 Promise.all 和 filter 来处理摄像头数据
+          // 保存当前正在播放视频的摄像头状态
+          const playingCameras = new Map()
+          monitorData.value.forEach(camera => {
+            if (camera.isPlaying) {
+              playingCameras.set(camera.cameraSn, {
+                isPlaying: true,
+                videoUrl: camera.videoUrl,
+                startTime: camera.startTime,
+                playbackLogs: camera.playbackLogs
+              })
+            }
+          })
+
+          // 处理每个摄像头的数据
           const processedCameras = await Promise.all(
-            response.rows.map(async camera => {
-              console.log('处理摄像头:', {
-                name: camera.cameraName,
-                mapSize: aliveStatusMap.size,
-                mapKeys: Array.from(aliveStatusMap.keys())
-              });
-
-              // 尝试多种方式匹配状态
-              let deviceStatus = aliveStatusMap.get(camera.cameraName);
-
-              // 如果直接匹配失败，尝试模糊匹配
-              if (deviceStatus === undefined) {
-                const matchingKey = Array.from(aliveStatusMap.keys()).find(key =>
-                  key.includes(camera.cameraName) || camera.cameraName.includes(key)
-                );
-                if (matchingKey) {
-                  deviceStatus = aliveStatusMap.get(matchingKey);
-                  console.log('通过模糊匹配找到状态:', {
-                    camera: camera.cameraName,
-                    matchingKey,
-                    status: deviceStatus
-                  });
-                }
-              }
-
-              console.log('最终状态:', {
-                camera: camera.cameraName,
-                status: deviceStatus
-              });
-
-              // 获取该摄像头的最新通行记录
+            filteredCameras.map(async camera => {
               try {
-                const recordResponse = await getLatestRecord(companyId, camera.entranceNo + camera.turnNo);
-                // 如果没有实际数据，返回 null
-                if (recordResponse.code === 200 && (!recordResponse.data || Object.keys(recordResponse.data).length === 0)) {
-                  return null;
-                }
-
-                let latestRecord = null;
+                const recordResponse = await getLatestRecord(companyId, camera.cameraSn)
+                let latestRecord = null
+                console.log('recordResponse', recordResponse)
                 if (recordResponse.code === 200 && recordResponse.data) {
                   latestRecord = {
                     plateNumber: recordResponse.data.plateNo,
-                    passTime: recordResponse.data.startDate,
-                    direction: recordResponse.data.state === 1 ? '进场' : '出场',
-                    vehicleType: recordResponse.data.carType || '--',
-                    emissionStandard: recordResponse.data.emissionStage || '--',
-                    result: recordResponse.data.inboundAccess === 1 ? '允许通行' : '禁止通行',
-                    plateColor: recordResponse.data.plateColor,
-                    inImg: recordResponse.data.inImg,
-                    outImg: recordResponse.data.outImg,
-                    certMessage: recordResponse.data.certMessage,
-                    cameraName: recordResponse.data.cameraName
-                  };
+                    passTime: recordResponse.data.recordTime,
+                    direction: recordResponse.data.direction === 1 ? '进场' : '出场',
+                    accessState: (() => {
+                      switch (recordResponse.data.accessState) {
+                        case '1':
+                          return '自动抬杆';
+                        case '0':
+                          return '禁止通行';
+                        case '-1':
+                          return '手动抬杆';
+                        case '-2':
+                          return '无识别记录';
+                        default:
+                          return '未知状态';
+                      }
+                    })(),
+                    plateImg: recordResponse.data.plateImg,
+                    bodyImg: recordResponse.data.bodyImg
+                  }
                 }
 
+                // 获取之前的播放状态
+                const playingState = playingCameras.get(camera.cameraSn)
+
                 return {
-                  image: latestRecord?.inImg || latestRecord?.outImg,
-                  plateNumber: latestRecord ? latestRecord.plateNumber : '--',
-                  emissionStandard: latestRecord ? latestRecord.emissionStandard : '--',
-                  recognitionTime: latestRecord ? latestRecord.passTime : new Date().toLocaleString(),
-                  entranceName: latestRecord ? latestRecord.cameraName : (camera.cameraName || '--'),
+                  image: latestRecord?.bodyImg || '',
+                  entranceName: camera.cameraName || '--',
                   status: camera.isValid === 1 ? '已认证' : '未认证',
-                  inCharge: '--',
-                  inChargeContact: '--',
-                  maintenanceContact: '--',
-                  maintenanceCompany: '--',
-                  maintenancePhone: '--',
-                  address: `经度: ${camera.longitude}, 纬度: ${camera.latitude}`,
                   ip: camera.ip,
                   port: camera.port,
                   username: camera.username,
@@ -561,49 +658,44 @@ export default {
                   entranceFlag: camera.entranceFlag,
                   deviceId: camera.deviceId,
                   channelId: camera.channelId,
-                  latestRecord: latestRecord ? {
-                    plateNumber: latestRecord.plateNumber,
-                    passTime: latestRecord.passTime,
-                    direction: latestRecord.direction,
-                    vehicleType: latestRecord.vehicleType,
-                    emissionStandard: latestRecord.emissionStandard,
-                    result: latestRecord.result
-                  } : null,
-                  isAlive: deviceStatus,
-                  isPlaying: false,
-                  videoUrl: '',
-                  startTime: null,
-                  playbackLogs: []
-                };
+                  latestRecord: latestRecord,
+                  isAlive: aliveStatusMap.get(camera.cameraName) || false,
+                  // 如果之前在播放,保持播放状态
+                  isPlaying: playingState ? playingState.isPlaying : false,
+                  videoUrl: playingState ? playingState.videoUrl : '',
+                  startTime: playingState ? playingState.startTime : null,
+                  playbackLogs: playingState ? playingState.playbackLogs : []
+                }
               } catch (error) {
-                console.error('获取最新通行记录失败:', error);
-                return null;
+                console.error('处理摄像头数据失败:', error)
+                // 获取之前的播放状态
+                const playingState = playingCameras.get(camera.cameraSn)
+                return {
+                  entranceName: camera.cameraName || '--',
+                  status: camera.isValid === 1 ? '已认证' : '未认证',
+                  isAlive: aliveStatusMap.get(camera.cameraName) || false,
+                  // 如果之前在播放,保持播放状态
+                  isPlaying: playingState ? playingState.isPlaying : false,
+                  videoUrl: playingState ? playingState.videoUrl : '',
+                  startTime: playingState ? playingState.startTime : null,
+                  playbackLogs: playingState ? playingState.playbackLogs : [],
+                  latestRecord: null
+                }
               }
             })
-          );
+          )
 
-          // 过滤掉所有 null 值，只保留有效的摄像头数据
-          monitorData.value = processedCameras.filter(camera => camera !== null);
-
-          // 更新饼图数据
-          if (doughnutChart) {
-            const onlineDevices = monitorData.value.filter(device => device.isAlive).length;
-            const offlineDevices = monitorData.value.filter(device => !device.isAlive).length;
-
-            // 只使用两个数据点
-            doughnutChart.data.datasets[0].data = [onlineDevices, offlineDevices];
-            doughnutChart.update();
-          }
+          monitorData.value = processedCameras
         }
       } catch (error) {
-        console.error('获取门禁信息失败:', error);
+        console.error('获取门禁信息失败:', error)
         ElNotification({
           title: '错误',
           message: '获取门禁信息失败',
           type: 'error'
-        });
+        })
       } finally {
-        loading.value = false;
+        loading.value = false
       }
     }
 
@@ -651,18 +743,29 @@ export default {
 
     // 刷新数据
     const refreshData = async () => {
-      const companyId = route.query.companyId
-      if (companyId) {
-        await Promise.all([
-          fetchGateInfo(companyId),
-          fetchStatData()
-        ])
-        ElNotification({
-          title: '成功',
-          message: '数据已更新',
-          type: 'success'
-        })
+      if (selectedCompanyId.value) {
+        try {
+          await Promise.all([
+            fetchGateInfo(selectedCompanyId.value),
+            fetchLatestControl(),
+            fetchStatData()
+          ])
+          console.log('数据刷新成功:', new Date().toLocaleString())
+        } catch (error) {
+          console.error('数据刷新失败:', error)
+        }
       }
+    }
+
+    // 添加启动定时刷新的方法
+    const startAutoRefresh = () => {
+      // 清除可能存在的旧定时器
+      if (refreshInterval.value) {
+        clearInterval(refreshInterval.value)
+      }
+      // 设置新的定时器，每30秒刷新一次
+      refreshInterval.value = setInterval(refreshData, 30000)
+      console.log('启动自动刷新')
     }
 
     // 更新时间
@@ -713,13 +816,16 @@ export default {
 
     // 初始化饼图
     const initPieChart = () => {
+      console.log('初始化饼图', pieChartRef.value)
       if (pieChartRef.value) {
         const ctx = pieChartRef.value.getContext('2d')
         if (doughnutChart) {
+          console.log('销毁旧的饼图')
           doughnutChart.destroy()
           doughnutChart = null
         }
         try {
+          console.log('创建新的饼图')
           doughnutChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -748,32 +854,29 @@ export default {
               }
             }
           })
+          console.log('饼图创建成功', doughnutChart)
         } catch (error) {
           console.error('初始化饼图失败:', error)
         }
+      } else {
+        console.error('找不到饼图 canvas 元素')
       }
     }
 
     // 获取最新管控信息
     const fetchLatestControl = async () => {
-      const companyId = route.query.companyId
-      if (!companyId) return
+      if (!selectedCompanyId.value) return
 
       try {
-        const response = await queryLatestControl(companyId)
+        const response = await queryLatestControl(selectedCompanyId.value)
         if (response.code === 200 && response.data) {
-          // 解构接口返回的数据
           const { warningLevel, responseLevel, controlMeasure, startTime, endTime } = response.data
-          console.log('获取最新管控信息:', response.data)
-          // 设置管控信息
           statusMonitorData.value.latestControl = {
             warningLevel,
             responseLevel,
             controlTime: `${startTime} 至 ${endTime}`,
             controlMeasure
           }
-
-          // 更新在线状态
           statusMonitorData.value.online = true
         }
       } catch (error) {
@@ -784,11 +887,10 @@ export default {
 
     // 添加获取统计数据的方法
     const fetchStatData = async () => {
-      const companyId = route.query.companyId
-      if (!companyId) return
+      if (!selectedCompanyId.value) return
 
       try {
-        const response = await getstat(companyId)
+        const response = await getstat(selectedCompanyId.value)
         if (response.code === 200 && response.data) {
           const {
             totalVehiclesToday = 0,
@@ -803,13 +905,13 @@ export default {
           // 更新柱状图数据
           if (barChart) {
             barChart.data.datasets[0].data = [
-              totalVehiclesToday,          // 今日通行
-              inboundCount,                // 今日入场
-              outboundCount,               // 今日出场
-              inboundCertSuccessCount + outboundCertSuccessCount,  // 上报成功
-              totalVehiclesToday - (inboundCertSuccessCount + outboundCertSuccessCount),  // 上报失败
-              manualLiftCount,             // 手动抬杆
-              vehiclesAddedToday           // 备案车辆
+              totalVehiclesToday,
+              inboundCount,
+              outboundCount,
+              inboundCertSuccessCount + outboundCertSuccessCount,
+              totalVehiclesToday - (inboundCertSuccessCount + outboundCertSuccessCount),
+              manualLiftCount,
+              vehiclesAddedToday
             ]
             barChart.update()
           }
@@ -1032,79 +1134,57 @@ export default {
     }
 
     // 修改视频错误处理方法
-    const handleVideoError = (error, camera) => {
-      const index = monitorData.value.findIndex(item =>
-        item.deviceId === camera.deviceId && item.channelId === camera.channelId
-      );
-
-      if (index !== -1) {
-        const log = {
-          time: new Date().toLocaleTimeString(),
-          type: 'error',
-          message: `播放错误: ${error}`
-        };
-
-        if (!monitorData.value[index].playbackLogs) {
-          monitorData.value[index].playbackLogs = [];
-        }
-
-        monitorData.value[index].playbackLogs.push(log);
-      }
-
-      ElNotification({
-        title: '错误',
-        message: error,
+    const handleVideoError = (error, item) => {
+      console.error('视频播放错误:', error)
+      
+      // 添加错误日志
+      item.playbackLogs.push({
+        time: new Date().toLocaleString(),
+        message: `播放错误: ${error.message || '未知错误'}`,
         type: 'error'
-      });
+      })
 
-      if (index !== -1) {
-        monitorData.value[index] = {
-          ...monitorData.value[index],
-          videoUrl: '',
-          isPlaying: false
-        };
+      // 如果是 AbortError，记录日志但不做其他处理
+      if (error.name === 'AbortError') {
+        item.playbackLogs.push({
+          time: new Date().toLocaleString(),
+          message: '检测到省电模式中断',
+          type: 'warning'
+        })
+      }
+    }
+
+    // 添加时间格式化方法
+    const formatTime = (timeStr) => {
+      if (!timeStr) return '--'
+      try {
+        const date = new Date(timeStr)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const seconds = String(date.getSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      } catch (error) {
+        return timeStr
       }
     }
 
     onMounted(() => {
-      fetchCompanyInfo()
+      fetchCompanyList()
       updateTime()
       setInterval(updateTime, 1000)
-      initChart()
-      initPieChart()
-      fetchLatestControl()
-      fetchStatData() // 初始获取统计数据
-      
-      // 定时更新数据
-      const updateInterval = setInterval(() => {
-        fetchStatData()
-      }, 60 * 1000) // 每分钟更新一次
+    })
 
-      // 修改 resize 事件监听
-      const handleResize = () => {
-        if (barChart) {
-          barChart.update()
-        }
-        if (doughnutChart) {
-          doughnutChart.update()
-        }
+    // 添加组件卸载时的清理
+    onUnmounted(() => {
+      // 清除定时器
+      if (refreshInterval.value) {
+        clearInterval(refreshInterval.value)
+        refreshInterval.value = null
+        console.log('清除自动刷新定时器')
       }
-
-      window.addEventListener('resize', handleResize)
-
-      // 在组件卸载时清除定时器
-      onUnmounted(() => {
-        clearInterval(updateInterval)
-        if (barChart) {
-          barChart.destroy()
-          barChart = null
-        }
-        if (doughnutChart) {
-          doughnutChart.destroy()
-          doughnutChart = null
-        }
-        window.removeEventListener('resize', handleResize)
-      })
     })
 
     return {
@@ -1141,7 +1221,12 @@ export default {
       activeVideoUrl,
       showVideo,
       handleVideoEvent,
-      handleVideoError
+      handleVideoError,
+      showCompanySelector,
+      selectedCompanyId,
+      companyList,
+      handleCompanySelect,
+      formatTime
     }
   }
 }
@@ -1353,8 +1438,9 @@ export default {
   aspect-ratio: 16/9;
   position: relative;
   background: #000;
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
+  min-width: 320px;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .image-section img {
@@ -1479,7 +1565,7 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 200px;
+  min-width: 240px;
   padding: 8px;
   overflow: hidden;
   position: relative;
@@ -1489,61 +1575,64 @@ export default {
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .info {
   flex: 1;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .info .info-grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
-  height: calc(100% - 10px);
-  overflow: hidden;
+  height: 100%;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .info .info-grid .info-item {
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  gap: 0px;
+  padding: 2px 0;
+  border-bottom: 1px solid #f0f0f0;
+  min-height: 24px;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .info .info-grid .info-item .label {
   color: #909399;
   font-size: 12px;
   white-space: nowrap;
-  min-width: 70px;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .info .info-grid .info-item .value {
   color: #303133;
   font-size: 12px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-align: right;
-  flex: 1;
+}
+
+.gateway-monitor .content .monitor-cards .card .card-content .info-section .info .info-grid .vehicle-image {
+  margin-top: 4px;
+  padding: 4px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gateway-monitor .content .monitor-cards .card .card-content .info-section .info .info-grid .vehicle-image .el-image {
+  width: 100%;
+  height: 80px;
+  border-radius: 2px;
+  overflow: hidden;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .actions {
-  margin-top: 8px;
+  margin-top: 4px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 4px;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .actions .el-button {
-  margin: 0;
-  padding: 4px 0;
-  height: 28px;
+  height: 24px;
   font-size: 12px;
-  width: 100%;
-  border-radius: 0;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
 }
 
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .actions .el-button.el-button--primary {
@@ -1789,5 +1878,12 @@ export default {
 .gateway-monitor .content .monitor-cards .card .card-content .info-section .video-logs .log-events p.canplay {
   color: #409eff;
   background-color: #ecf5ff;
+}
+
+/* 添加新的样式 */
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
 }
 </style>

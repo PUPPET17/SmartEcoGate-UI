@@ -25,6 +25,7 @@
     "@wchbrad/vue-easy-tree": "^1.0.13",
     "axios": "0.28.1",
     "chart.js": "^4.4.7",
+    "d3": "^7.9.0",
     "echarts": "^5.5.1",
     "element-plus": "2.7.6",
     "file-saver": "2.0.5",

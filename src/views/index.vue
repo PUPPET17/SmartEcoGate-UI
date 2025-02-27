@@ -151,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, toRefs, computed, watch } from 'vue';
+import { ref, reactive, onMounted, toRefs, computed, watch, onUnmounted } from 'vue';
 import { VueFlow, MarkerType } from "@vue-flow/core";
 import { Background } from '@vue-flow/background'
 import { MiniMap } from '@vue-flow/minimap'
@@ -272,16 +272,51 @@ const data = reactive({
 
 const { queryParams } = toRefs(data);
 
-const getInterfaceStatus = async () => {
+const isProcessing = ref(false);
+
+// 添加一个全局的请求状态管理
+const requestStatus = {
+  isAliveRequesting: false,
+  lastRequestTime: 0,
+  minInterval: 2000 // 最小请求间隔（毫秒）
+};
+
+const getInterfaceStatus = async (silent = false) => {
+  // 检查是否可以发起新请求
+  const now = Date.now();
+  if (requestStatus.isAliveRequesting || 
+      (now - requestStatus.lastRequestTime) < requestStatus.minInterval) {
+    return;
+  }
+
   try {
+    requestStatus.isAliveRequesting = true;
+    requestStatus.lastRequestTime = now;
+
+    // 检查请求参数是否准备好
+    if (!enterpriseIds.value?.length && !cameraList.value?.length) {
+      return;
+    }
+
     const req = {
       enterpriseReqList: enterpriseIds.value,
       cameraReqList: cameraList.value
     };
+    
     const response = await isAlive(req);
-    interfaceStatus.value = response;
+    if (response) {
+      interfaceStatus.value = response;
+    }
   } catch (error) {
-    console.error('获取接口状态失败:', error);
+    // 只在非静默模式下打印错误
+    if (!silent && error.message !== '数据正在处理，请勿重复提交') {
+      console.error('获取接口状态失败:', error);
+    }
+  } finally {
+    // 延迟重置状态
+    setTimeout(() => {
+      requestStatus.isAliveRequesting = false;
+    }, requestStatus.minInterval);
   }
 };
 
@@ -293,17 +328,14 @@ const showOfflineOnly = ref(false);
 const filteredInterfaceStatus = computed(() => {
   let filtered = [];
 
-  // 如果是管理员且没有选择特定企业，显示所有企业的接口状态
   if (userStore.roles.includes('admin') && !selectedCompanyId.value) {
     filtered = interfaceStatus.value.filter(item => item.type === 1);
   } else if (selectedCompanyId.value) {
-    // 根据选择的企业过滤显示
     filtered = interfaceStatus.value.filter(item =>
       item.companyId === selectedCompanyId.value
     );
   }
 
-  // 根据离线状态过滤
   if (showOfflineOnly.value) {
     filtered = filtered.filter(item => !item.status);
   }
@@ -314,11 +346,9 @@ const filteredInterfaceStatus = computed(() => {
 function formatTime(time) {
   if (!time) return '';
 
-  // 直接解析后端返回的时间字符串
   const [, month, day, timeStr, , year] = time.split(' ');
   const [hours, minutes, seconds] = timeStr.split(':');
 
-  // 月份映射
   const monthMap = {
     'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
     'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
@@ -348,7 +378,6 @@ async function getCameraList(companyId = null) {
   }
 }
 
-// 监听选择的企业ID变化
 watch(selectedCompanyId, async (newCompanyId) => {
   if (newCompanyId) {
     const response = await getCameraList(newCompanyId);
@@ -357,15 +386,14 @@ watch(selectedCompanyId, async (newCompanyId) => {
       uniqueCameras.add(JSON.stringify(camera));
     });
     cameraList.value = Array.from(uniqueCameras).map(cam => JSON.parse(cam));
-    // 获取新的相机列表后，更新接口状态
-    getInterfaceStatus();
+    // 静默模式调用状态检查
+    await getInterfaceStatus(true);
   }
 });
 
 const selectedControlCompanyId = ref(null);
 const controlInfo = ref(null);
 
-// 获取最新管控措施
 const getLatestControl = async (companyId) => {
   if (!companyId) {
     return;
@@ -381,23 +409,59 @@ const getLatestControl = async (companyId) => {
 };
 
 onMounted(() => {
+  let isInitialized = false;
+
   const initialize = async () => {
-    await getEnterpriseList();
-    if (!userStore.roles.includes('admin') && enterpriseIds.value.length > 0) {
-      selectedCompanyId.value = enterpriseIds.value[0].companyId;
-      selectedControlCompanyId.value = enterpriseIds.value[0].companyId;
-      await getLatestControl(selectedControlCompanyId.value);
+    if (isInitialized) return;
+    
+    try {
+      await getEnterpriseList();
+      
+      if (!userStore.roles.includes('admin') && enterpriseIds.value.length > 0) {
+        selectedCompanyId.value = enterpriseIds.value[0].companyId;
+        selectedControlCompanyId.value = enterpriseIds.value[0].companyId;
+        await getLatestControl(selectedControlCompanyId.value);
+      }
+      
+      if (!userStore.roles.includes('admin')) {
+        const response = await getCameraList(selectedCompanyId.value);
+        cameraList.value = response.rows;
+      }
+      
+      // 静默模式调用状态检查
+      await getInterfaceStatus(true);
+      isInitialized = true;
+    } catch (error) {
+      // 忽略初始化错误
+      console.debug('初始化过程中出现非关键错误');
     }
-    // 如果是普通企业用户，只获取自己企业的相机列表
-    if (!userStore.roles.includes('admin')) {
-      const response = await getCameraList(selectedCompanyId.value);
-      cameraList.value = response.rows;
-    }
-    getInterfaceStatus();
   };
 
   initialize();
-  setInterval(getInterfaceStatus, 60000);
+
+  // 使用 RAF 进行节流
+  let rafId = null;
+  const throttledGetStatus = () => {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+    }
+    rafId = requestAnimationFrame(() => {
+      getInterfaceStatus(true);
+    });
+  };
+
+  // 设置定时刷新
+  const interval = setInterval(() => {
+    throttledGetStatus();
+  }, 60000);
+
+  // 清理函数
+  onUnmounted(() => {
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+    }
+    clearInterval(interval);
+  });
 });
 
 async function getEnterpriseList() {
@@ -413,7 +477,6 @@ const handleCompanyClick = (companyId) => {
   selectedCompanyId.value = companyId;
 };
 
-// 添加 watch
 watch(selectedControlCompanyId, async (newCompanyId) => {
   if (newCompanyId) {
     await getLatestControl(newCompanyId);
@@ -422,7 +485,6 @@ watch(selectedControlCompanyId, async (newCompanyId) => {
   }
 });
 
-// 添加辅助函数
 const getWarningLevelText = (level) => {
   const levels = {
     '1': '一级预警',
@@ -644,7 +706,6 @@ const goToControlRule = () => {
   background: linear-gradient(90deg, #F56C6C, #F56C6C);
 }
 
-/* 添加离线日志卡片的样式 */
 .fixed-height-card :deep(.el-card__body) {
   height: calc(100% - 55px);
   overflow: hidden;
@@ -676,7 +737,6 @@ const goToControlRule = () => {
   margin: 0;
 }
 
-/* 移动端适配样式 */
 @media screen and (max-width: 768px) {
   .card-box {
     margin-top: 10px;
@@ -747,7 +807,6 @@ const goToControlRule = () => {
     max-height: 40vh;
   }
 
-  /* 优化表单在移动端的显示 */
   :deep(.el-form-item__label) {
     float: none;
     display: block;
@@ -759,13 +818,11 @@ const goToControlRule = () => {
     margin-left: 0 !important;
   }
 
-  /* 优化switch在移动端的显示 */
   :deep(.el-switch__label) {
     font-size: 12px;
   }
 }
 
-/* 添加平滑过渡效果 */
 .el-col {
   transition: all 0.3s ease-in-out;
 }
@@ -774,7 +831,6 @@ const goToControlRule = () => {
   transition: all 0.3s ease-in-out;
 }
 
-/* 优化滚动条样式 */
 .scrollable-content {
   scrollbar-width: thin;
   scrollbar-color: #909399 #f4f4f5;
@@ -794,7 +850,6 @@ const goToControlRule = () => {
   border-radius: 3px;
 }
 
-/* 优化加载状态显示 */
 .loading-overlay {
   position: absolute;
   top: 0;

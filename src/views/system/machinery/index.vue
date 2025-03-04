@@ -2,7 +2,9 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="企业id" prop="companyId">
-        <el-input v-model="queryParams.companyId" placeholder="请输入企业id" clearable @keyup.enter="handleQuery" />
+        <el-select v-model="queryParams.companyId" placeholder="请选择企业" clearable filterable>
+          <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName" :value="item.companyId" />
+        </el-select>
       </el-form-item>
       <el-form-item label="车牌号" prop="plateNumber">
         <el-input v-model="queryParams.plateNumber" placeholder="请输入车牌号" clearable @keyup.enter="handleQuery" />

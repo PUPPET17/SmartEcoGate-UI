@@ -549,12 +549,20 @@
               </el-tag>
             </el-form-item>
           </el-col>
+          <el-col :span="5">
+            <el-form-item label="认证信息">
+              <el-tooltip :content="gateForm.msg" placement="top">
+                <el-input v-model="gateForm.msg" disabled />
+              </el-tooltip>
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <el-form-item class="save-btn">
           <div class="save-btn-container">
             <el-button type="success" @click="handleAdd" :disabled="!isAddingGate">保存新增</el-button>
             <el-button type="primary" @click="handleUpdate" :disabled="isAddingGate">保存修改</el-button>
+            <el-button type="primary" @click="handleAuthGate" :disabled="isAddingGate">提交认证</el-button>
           </div>
         </el-form-item>
 
@@ -569,7 +577,7 @@ import { VideoCamera, Monitor, SetUp, Refresh, Delete, Plus, Rank, Search, Quest
 import { selectIds } from "@/api/system/info";
 import { getGateList, getDeviceList, getGateInfo, saveScreen, updateScreen } from '@/api/system/device'
 import { addCamera, updateCamera, authCamera } from '@/api/system/camera'
-import { addGate, updateGate } from '@/api/system/gate'
+import { addGate, updateGate, authGate } from '@/api/system/gate'
 import { ElMessage } from 'element-plus'
 import draggable from 'vuedraggable'
 import { cloneDeep, isEqual } from 'lodash-es'
@@ -663,7 +671,8 @@ const gateForm = reactive({
   maintenancePhone: '', // 运维联系方式
   isValid: null, // 是否认证
   userId: null, // 用户ID
-  deptId: null // 部门ID
+  deptId: null, // 部门ID,
+  msg: '' // 认证信息
 })
 
 const isAddingGate = ref(false)
@@ -1378,7 +1387,8 @@ const handleAuthCamera = async () => {
       channels: cameraForm.channels,
       deviceId: cameraForm.deviceId,
       channelId: cameraForm.channelId,
-      localChannelId: cameraForm.localChannelId
+      localChannelId: cameraForm.localChannelId,
+      gateId: cameraForm.gateId
     }
     try {
       await authCamera(saveData)
@@ -1387,6 +1397,23 @@ const handleAuthCamera = async () => {
     } catch (error) {
       console.error('相机认证失败:', error)
       ElMessage.error('相机认证失败')
+    }
+  } catch (error) {
+    console.error('表单验证失败:', error)
+  }
+}
+
+const handleAuthGate = async () => {
+  try {
+    await formRef.value.validate()
+    console.log(gateForm)
+    try {
+      await authGate(gateForm)
+      ElMessage.success('道闸认证成功')
+      await handleRefresh()
+    } catch (error) {
+      console.error('道闸认证失败:', error)
+      ElMessage.error('道闸认证失败')
     }
   } catch (error) {
     console.error('表单验证失败:', error)

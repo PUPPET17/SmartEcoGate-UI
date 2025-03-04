@@ -57,3 +57,11 @@ export function getGateInfoByCompanyId(companyId) {
   })
 }
 
+export function authGate(data) {
+  return request({
+    url: '/system/gate/auth',
+    method: 'post',
+    data: data
+  })
+}
+

@@ -454,7 +454,7 @@ const nextStep = async () => {
     // 如果是第一步，需要进行管控策略检查
     if (activeStep.value === 0) {
       const checkParams = {
-        companyId: form.value.companyId,
+        companyId: route.query.aid,
         plateNumber: form.value.plateNumber,
         fuelType: form.value.fuelType,
         plateColor: form.value.plateColor,
@@ -463,6 +463,8 @@ const nextStep = async () => {
         emissionStage: form.value.emissionStage,
         vehicleType: form.value.vehicleType
       };
+
+      console.log("checkParams + ", checkParams)
 
       const res = await checkOffSiteVehicle(checkParams);
       if (res === "passed") {

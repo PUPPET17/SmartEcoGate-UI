@@ -1,22 +1,12 @@
 <template>
   <!-- 添加公司选择对话框 -->
-  <el-dialog
-    v-model="showCompanySelector"
-    title="选择公司"
-    width="30%"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    :show-close="false"
-  >
+  <el-dialog v-model="showCompanySelector" title="选择公司" width="30%" :close-on-click-modal="false"
+    :close-on-press-escape="false" :show-close="false">
     <el-form>
       <el-form-item label="选择公司">
         <el-select v-model="selectedCompanyId" placeholder="请选择公司" style="width: 100%">
-          <el-option
-            v-for="company in companyList"
-            :key="company.companyId"
-            :label="company.companyName"
-            :value="company.companyId"
-          />
+          <el-option v-for="company in companyList" :key="company.companyId" :label="company.companyName"
+            :value="company.companyId" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -86,32 +76,22 @@
                 <div class="card-content">
                   <div class="image-section">
                     <template v-if="!item.isPlaying">
-                      <el-image 
-                        :src="item.latestRecord?.bodyImg" 
-                        alt="监控画面"
-                        fit="cover"
-                        style="width: 100%; height: 100%;"
-                        :preview-src-list="[item.latestRecord?.bodyImg]"
-                        :initial-index="0"
-                        :preview-teleported="true"
-                        :hide-on-click-modal="false"
-                      />
+                      <el-image :src="item.latestRecord?.bodyImg" alt="监控画面" fit="cover"
+                        style="width: 100%; height: 100%;" :preview-src-list="[item.latestRecord?.bodyImg]"
+                        :initial-index="0" :preview-teleported="true" :hide-on-click-modal="false" />
                       <div class="image-overlay">
                         <span class="time-badge">{{ formatTime(item.latestRecord?.passTime) }}</span>
                       </div>
                     </template>
                     <template v-else>
-                      <VideoPlayer 
-                        :stream-url="item.videoUrl" 
-                        @error="(error) => handleVideoError(error, item)"
+                      <VideoPlayer :stream-url="item.videoUrl" @error="(error) => handleVideoError(error, item)"
                         @play="(event) => handleVideoEvent('play', item)"
                         @pause="(event) => handleVideoEvent('pause', item)"
                         @waiting="(event) => handleVideoEvent('waiting', item)"
                         @playing="(event) => handleVideoEvent('playing', item)"
                         @loadstart="(event) => handleVideoEvent('loadstart', item)"
                         @loadeddata="(event) => handleVideoEvent('loadeddata', item)"
-                        @canplay="(event) => handleVideoEvent('canplay', item)"
-                      />
+                        @canplay="(event) => handleVideoEvent('canplay', item)" />
                     </template>
                   </div>
                   <div class="info-section">
@@ -132,20 +112,15 @@
                           </div>
                           <div class="info-item">
                             <span class="label">通行结果</span>
-                            <span class="value" :class="item.latestRecord.accessState === '允许通行' ? 'success' : 'danger'">
+                            <span class="value"
+                              :class="item.latestRecord.accessState === '允许通行' ? 'success' : 'danger'">
                               {{ item.latestRecord.accessState }}
                             </span>
                           </div>
                           <div class="vehicle-image">
-                            <el-image 
-                              :src="item.latestRecord.plateImg"
-                              :preview-src-list="[item.latestRecord.plateImg]"
-                              fit="contain"
-                              style="width: 100%; height: 80px;"
-                              :initial-index="0"
-                              :preview-teleported="true"
-                              :hide-on-click-modal="false"
-                            />
+                            <el-image :src="item.latestRecord.plateImg" :preview-src-list="[item.latestRecord.plateImg]"
+                              fit="contain" style="width: 100%; height: 80px;" :initial-index="0"
+                              :preview-teleported="true" :hide-on-click-modal="false" />
                           </div>
                         </template>
                         <template v-else>
@@ -442,7 +417,7 @@ export default {
         const response = await selectIds()
         if (response.code === 200) {
           companyList.value = response.rows
-          
+
           // 如果只有一个公司，自动选择它
           if (companyList.value.length === 1) {
             selectedCompanyId.value = companyList.value[0].companyId
@@ -480,14 +455,14 @@ export default {
     const handleCompanySelect = async () => {
       if (selectedCompanyId.value) {
         showCompanySelector.value = false
-        
+
         // 等待 DOM 更新完成后再初始化图表
         await nextTick()
-        
+
         // 先初始化图表
         initChart()
         initPieChart()
-        
+
         // 然后获取数据
         await fetchCompanyInfo()
         await Promise.all([
@@ -539,10 +514,10 @@ export default {
 
         if (response.code === 200 && response.rows) {
           // 过滤掉 captureType 为 2 和 4 的相机
-          const filteredCameras = response.rows.filter(camera => 
+          const filteredCameras = response.rows.filter(camera =>
             camera.captureType !== '2' && camera.captureType !== '4'
           )
-          
+
           // 构建 isAlive 请求参数
           const aliveRequestData = {
             enterpriseReqList: [{
@@ -576,7 +551,99 @@ export default {
             statsCards.value[1].value = offlineDevices
             statsCards.value[2].value = enterpriseStatus ? '在线' : '离线'
             statsCards.value[2].iconColor = enterpriseStatus ? 'text-green-500' : 'text-red-500'
-            statsCards.value[3].value = response.rows.length
+
+            // 保存当前正在播放视频的摄像头状态
+            const playingCameras = new Map()
+            monitorData.value.forEach(camera => {
+              if (camera.isPlaying) {
+                playingCameras.set(camera.cameraSn, {
+                  isPlaying: true,
+                  videoUrl: camera.videoUrl,
+                  startTime: camera.startTime,
+                  playbackLogs: camera.playbackLogs
+                })
+              }
+            })
+
+            // 处理每个摄像头的数据
+            const processedCameras = await Promise.all(
+              filteredCameras.map(async camera => {
+                try {
+                  const recordResponse = await getLatestRecord(companyId, camera.cameraSn)
+                  let latestRecord = null
+                  console.log('recordResponse', recordResponse)
+                  if (recordResponse.code === 200 && recordResponse.data) {
+                    latestRecord = {
+                      plateNumber: recordResponse.data.plateNo,
+                      passTime: recordResponse.data.recordTime,
+                      direction: recordResponse.data.direction === 1 ? '进场' : '出场',
+                      accessState: (() => {
+                        switch (recordResponse.data.accessState) {
+                          case '1':
+                            return '自动抬杆';
+                          case '0':
+                            return '禁止通行';
+                          case '-1':
+                            return '手动抬杆';
+                          case '-2':
+                            return '无识别记录';
+                          default:
+                            return '未知状态';
+                        }
+                      })(),
+                      plateImg: recordResponse.data.plateImg,
+                      bodyImg: recordResponse.data.bodyImg
+                    }
+                  }
+
+                  // 获取之前的播放状态
+                  const playingState = playingCameras.get(camera.cameraSn)
+
+                  return {
+                    image: latestRecord?.bodyImg || '',
+                    entranceName: camera.cameraName || '--',
+                    status: camera.isValid === 1 ? '已认证' : '未认证',
+                    ip: camera.ip,
+                    port: camera.port,
+                    username: camera.username,
+                    vedioSrc: camera.vedioSrc,
+                    vedioReplay: camera.vedioReplay,
+                    identifier: camera.identifier,
+                    cameraSn: camera.cameraSn,
+                    turnNo: camera.turnNo,
+                    entranceNo: camera.entranceNo,
+                    captureType: camera.captureType,
+                    entranceFlag: camera.entranceFlag,
+                    deviceId: camera.deviceId,
+                    channelId: camera.channelId,
+                    latestRecord: latestRecord,
+                    isAlive: aliveStatusMap.get(camera.cameraName) || false,
+                    // 如果之前在播放,保持播放状态
+                    isPlaying: playingState ? playingState.isPlaying : false,
+                    videoUrl: playingState ? playingState.videoUrl : '',
+                    startTime: playingState ? playingState.startTime : null,
+                    playbackLogs: playingState ? playingState.playbackLogs : []
+                  }
+                } catch (error) {
+                  console.error('处理摄像头数据失败:', error)
+                  // 获取之前的播放状态
+                  const playingState = playingCameras.get(camera.cameraSn)
+                  return {
+                    entranceName: camera.cameraName || '--',
+                    status: camera.isValid === 1 ? '已认证' : '未认证',
+                    isAlive: aliveStatusMap.get(camera.cameraName) || false,
+                    // 如果之前在播放,保持播放状态
+                    isPlaying: playingState ? playingState.isPlaying : false,
+                    videoUrl: playingState ? playingState.videoUrl : '',
+                    startTime: playingState ? playingState.startTime : null,
+                    playbackLogs: playingState ? playingState.playbackLogs : [],
+                    latestRecord: null
+                  }
+                }
+              })
+            )
+
+            monitorData.value = processedCameras
 
             // 更新饼图数据
             if (doughnutChart) {
@@ -593,99 +660,6 @@ export default {
               }
             }
           }
-
-          // 保存当前正在播放视频的摄像头状态
-          const playingCameras = new Map()
-          monitorData.value.forEach(camera => {
-            if (camera.isPlaying) {
-              playingCameras.set(camera.cameraSn, {
-                isPlaying: true,
-                videoUrl: camera.videoUrl,
-                startTime: camera.startTime,
-                playbackLogs: camera.playbackLogs
-              })
-            }
-          })
-
-          // 处理每个摄像头的数据
-          const processedCameras = await Promise.all(
-            filteredCameras.map(async camera => {
-              try {
-                const recordResponse = await getLatestRecord(companyId, camera.cameraSn)
-                let latestRecord = null
-                console.log('recordResponse', recordResponse)
-                if (recordResponse.code === 200 && recordResponse.data) {
-                  latestRecord = {
-                    plateNumber: recordResponse.data.plateNo,
-                    passTime: recordResponse.data.recordTime,
-                    direction: recordResponse.data.direction === 1 ? '进场' : '出场',
-                    accessState: (() => {
-                      switch (recordResponse.data.accessState) {
-                        case '1':
-                          return '自动抬杆';
-                        case '0':
-                          return '禁止通行';
-                        case '-1':
-                          return '手动抬杆';
-                        case '-2':
-                          return '无识别记录';
-                        default:
-                          return '未知状态';
-                      }
-                    })(),
-                    plateImg: recordResponse.data.plateImg,
-                    bodyImg: recordResponse.data.bodyImg
-                  }
-                }
-
-                // 获取之前的播放状态
-                const playingState = playingCameras.get(camera.cameraSn)
-
-                return {
-                  image: latestRecord?.bodyImg || '',
-                  entranceName: camera.cameraName || '--',
-                  status: camera.isValid === 1 ? '已认证' : '未认证',
-                  ip: camera.ip,
-                  port: camera.port,
-                  username: camera.username,
-                  vedioSrc: camera.vedioSrc,
-                  vedioReplay: camera.vedioReplay,
-                  identifier: camera.identifier,
-                  cameraSn: camera.cameraSn,
-                  turnNo: camera.turnNo,
-                  entranceNo: camera.entranceNo,
-                  captureType: camera.captureType,
-                  entranceFlag: camera.entranceFlag,
-                  deviceId: camera.deviceId,
-                  channelId: camera.channelId,
-                  latestRecord: latestRecord,
-                  isAlive: aliveStatusMap.get(camera.cameraName) || false,
-                  // 如果之前在播放,保持播放状态
-                  isPlaying: playingState ? playingState.isPlaying : false,
-                  videoUrl: playingState ? playingState.videoUrl : '',
-                  startTime: playingState ? playingState.startTime : null,
-                  playbackLogs: playingState ? playingState.playbackLogs : []
-                }
-              } catch (error) {
-                console.error('处理摄像头数据失败:', error)
-                // 获取之前的播放状态
-                const playingState = playingCameras.get(camera.cameraSn)
-                return {
-                  entranceName: camera.cameraName || '--',
-                  status: camera.isValid === 1 ? '已认证' : '未认证',
-                  isAlive: aliveStatusMap.get(camera.cameraName) || false,
-                  // 如果之前在播放,保持播放状态
-                  isPlaying: playingState ? playingState.isPlaying : false,
-                  videoUrl: playingState ? playingState.videoUrl : '',
-                  startTime: playingState ? playingState.startTime : null,
-                  playbackLogs: playingState ? playingState.playbackLogs : [],
-                  latestRecord: null
-                }
-              }
-            })
-          )
-
-          monitorData.value = processedCameras
         }
       } catch (error) {
         console.error('获取门禁信息失败:', error)
@@ -745,11 +719,10 @@ export default {
     const refreshData = async () => {
       if (selectedCompanyId.value) {
         try {
-          await Promise.all([
-            fetchGateInfo(selectedCompanyId.value),
-            fetchLatestControl(),
-            fetchStatData()
-          ])
+          // 按顺序执行，确保fetchStatData在最后执行
+          await fetchGateInfo(selectedCompanyId.value)
+          await fetchLatestControl()
+          await fetchStatData()
           console.log('数据刷新成功:', new Date().toLocaleString())
         } catch (error) {
           console.error('数据刷新失败:', error)
@@ -918,6 +891,11 @@ export default {
 
           // 更新统计卡片数据
           statsCards.value[3].value = inboundCertSuccessCount + outboundCertSuccessCount
+
+          // 添加日志记录
+          console.log('API返回的inboundCertSuccessCount:', inboundCertSuccessCount);
+          console.log('API返回的outboundCertSuccessCount:', outboundCertSuccessCount);
+          console.log('更新后的上报成功值:', statsCards.value[3].value);
         }
       } catch (error) {
         console.error('获取统计数据失败:', error)
@@ -1136,7 +1114,7 @@ export default {
     // 修改视频错误处理方法
     const handleVideoError = (error, item) => {
       console.error('视频播放错误:', error)
-      
+
       // 添加错误日志
       item.playbackLogs.push({
         time: new Date().toLocaleString(),
@@ -1662,7 +1640,7 @@ export default {
   gap: 20px;
 }
 
-.gateway-monitor .content .statistics >div {
+.gateway-monitor .content .statistics>div {
   background: #fff;
   border-radius: 8px;
   padding: 12px;
@@ -1672,7 +1650,7 @@ export default {
   overflow: hidden;
 }
 
-.gateway-monitor .content .statistics >div .card-header {
+.gateway-monitor .content .statistics>div .card-header {
   padding-bottom: 8px;
   margin-bottom: 8px;
   border-bottom: 1px solid #f0f0f0;
@@ -1682,25 +1660,25 @@ export default {
   justify-content: space-between;
 }
 
-.gateway-monitor .content .statistics >div .chart,
-.gateway-monitor .content .statistics >div .pie-chart {
+.gateway-monitor .content .statistics>div .chart,
+.gateway-monitor .content .statistics>div .pie-chart {
   flex: 1;
   height: calc(100% - 40px);
 }
 
-.gateway-monitor .content .statistics >div .info-content {
+.gateway-monitor .content .statistics>div .info-content {
   flex: 1;
   overflow-y: auto;
   padding: 0 12px;
 }
 
-.gateway-monitor .content .statistics >div .info-content .info-grid {
+.gateway-monitor .content .statistics>div .info-content .info-grid {
   display: grid;
   grid-template-columns: 1fr;
   padding: 8px 0;
 }
 
-.gateway-monitor .content .statistics >div .info-content .info-grid .info-item {
+.gateway-monitor .content .statistics>div .info-content .info-grid .info-item {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -1709,7 +1687,7 @@ export default {
   padding: 6px 0;
 }
 
-.gateway-monitor .content .statistics >div .info-content .info-grid .info-item .label {
+.gateway-monitor .content .statistics>div .info-content .info-grid .info-item .label {
   color: #999;
   font-size: 14px;
   white-space: nowrap;
@@ -1718,7 +1696,7 @@ export default {
   line-height: 1.4;
 }
 
-.gateway-monitor .content .statistics >div .info-content .info-grid .info-item .value {
+.gateway-monitor .content .statistics>div .info-content .info-grid .info-item .value {
   color: #333;
   font-size: 14px;
   text-align: right;

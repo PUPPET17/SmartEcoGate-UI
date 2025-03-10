@@ -354,3 +354,52 @@ h6 {
 	border-color: #ffafbd;
 	color: #ffffff;
 }
+
+/* 车牌号标签样式 */
+.el-tag-license-blue {
+	background: #3396ed;
+	border-color: #3396ed;
+	color: #ffffff;
+	font-weight: 600;
+}
+
+.el-tag-license-yellow {
+	background: #FFB300;
+	border-color: #FFB300;
+	color: #000000;
+	font-weight: 600;
+}
+
+.el-tag-license-white {
+	background: #FFFFFF;
+	border-color: #D9D9D9;
+	color: #000000;
+	font-weight: 600;
+}
+
+.el-tag-license-black {
+	background: #000000;
+	border-color: #000000;
+	color: #ffffff;
+	font-weight: 600;
+}
+
+.el-tag-license-green {
+	background: #40A563;
+	border-color: #40A563;
+	color: #ffffff;
+	font-weight: 600;
+}
+
+.el-tag-license-other {
+	background: #A0A0A0;
+	border-color: #A0A0A0;
+	color: #ffffff;
+	font-weight: 600;
+}
+
+.el-tag-license-yellow-green {
+	background: linear-gradient(45deg, #f7b733, #71b280);
+	border-color: #f7b733;
+	color: #ffffff;
+}

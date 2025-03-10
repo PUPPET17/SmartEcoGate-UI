@@ -82,6 +82,11 @@
         <el-button type="primary" plain icon="Warning" :disabled="multiple" @click="checkBlacklist">检查黑名单</el-button>
       </el-col>
       <el-col :span="1.5">
+        <el-button type="primary" :type="isVioMode ? 'success' : 'primary'" plain icon="Warning" @click="toggleVioMode">
+          {{ isVioMode ? '正常记录' : '违规记录' }}
+        </el-button>
+      </el-col>
+      <el-col :span="1.5">
         <el-button :loading="exportingOffsite" @click="handleExportOffsite" v-hasPermi="['transit:record:export']">
           <el-icon>
             <Download />
@@ -102,9 +107,10 @@
           </el-icon>导出非道路车辆台账
         </el-button>
       </el-col>
-      <el-col :span="1.5">
-        <el-button type="warning" plain icon="Refresh" :disabled="multiple" @click="handleReAuthLedger">重新补录记录</el-button>
-      </el-col>
+      <!-- <el-col :span="1.5">
+        <el-button type="warning" plain icon="Refresh" :disabled="multiple"
+          @click="handleReAuthLedger">重新补录记录</el-button>
+      </el-col> -->
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
     </el-row>
 
@@ -142,17 +148,17 @@
           <image-preview :src="scope.row.outSmallImg" :width="50" :height="50" />
         </template>
       </el-table-column>
-      <el-table-column v-if="columns[8].visible" label="创建时间" align="center" prop="createDate" width="120">
+      <!-- <el-table-column v-if="columns[8].visible" label="创建时间" align="center" prop="createDate" width="96">
         <template #default="scope">
           <span>{{ parseTime(scope.row.createDate, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
         </template>
-      </el-table-column>
+      </el-table-column> -->
       <el-table-column v-if="columns[9].visible" label="通行状态" align="center" prop="state">
         <template #default="scope">
           <dict-tag :options="transit_status" :value="scope.row.state" />
         </template>
       </el-table-column>
-      <el-table-column v-if="columns[14].visible" label="入场日期" align="center" prop="startDate" width="120">
+      <el-table-column v-if="columns[14].visible" label="入场日期" align="center" prop="startDate" width="96">
         <template #default="scope">
           <span>{{ parseTime(scope.row.startDate, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
         </template>
@@ -163,7 +169,7 @@
           <dict-tag :options="inbound_outbound_access" :value="scope.row.inboundAccess" />
         </template>
       </el-table-column>
-      <el-table-column v-if="columns[18].visible" label="出场日期" align="center" prop="endDate" width="130">
+      <el-table-column v-if="columns[18].visible" label="出场日期" align="center" prop="endDate" width="96">
         <template #default="scope">
           <span>{{ parseTime(scope.row.endDate, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
         </template>
@@ -172,6 +178,26 @@
         show-overflow-tooltip>
         <template #default="scope">
           <dict-tag :options="inbound_outbound_access" :value="scope.row.outboundAccess" />
+        </template>
+      </el-table-column>
+      <el-table-column label="认证状态" align="center" width="140">
+        <template #default="scope">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="margin-right: 8px;">入场:</span>
+              <dict-tag :options="certified" :value="scope.row.inboundCertStatus" />
+              <el-tooltip v-if="scope.row.certMessage" :content="scope.row.certMessage" placement="top">
+                <el-icon style="margin-left: 2px;"><InfoFilled /></el-icon>
+              </el-tooltip>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="margin-right: 8px;">出场:</span>
+              <dict-tag :options="certified" :value="scope.row.outboundCertStatus" />
+              <el-tooltip v-if="scope.row.userName" :content="scope.row.userName" placement="top">
+                <el-icon style="margin-left: 2px;"><InfoFilled /></el-icon>
+              </el-tooltip>
+            </div>
+          </div>
         </template>
       </el-table-column>
       <el-table-column v-if="columns[12].visible" label="电话号码" align="center" prop="tel" />
@@ -196,20 +222,7 @@
           <dict-tag :options="auto_cargo_info" :value="scope.row.isOutboundAutoEntry" />
         </template>
       </el-table-column>
-      <el-table-column v-if="columns[24].visible" label="入场认证" align="center" prop="inboundCertStatus">
-        <template #default="scope">
-          <dict-tag :options="certified" :value="scope.row.inboundCertStatus" />
-        </template>
-      </el-table-column>
-      <el-table-column v-if="columns[25].visible" label="出场认证" align="center" prop="outboundCertStatus">
-        <template #default="scope">
-          <dict-tag :options="certified" :value="scope.row.outboundCertStatus" />
-        </template>
-      </el-table-column>
-      <el-table-column v-if="columns[26].visible" label="入场认证信息" align="center" prop="certMessage" width="120"
-        show-overflow-tooltip />
-      <el-table-column v-if="columns[13].visible" label="出场认证信息" align="center" prop="userName" width="120"
-        show-overflow-tooltip />
+      
       <el-table-column label="操作" align="center" min-width="120" fixed="right">
         <template #default="scope">
           <div class="operation-container">
@@ -223,25 +236,26 @@
                   出场{{ getLedgerStatusText(ledgerInfo[scope.row.id]?.outStatus) }}
                 </el-tag>
               </div>
-              <el-button
-                link
-                type="warning"
-                size="small"
-                @click="handleReAuthLedger(scope.row)"
-                v-if="ledgerInfo[scope.row.id]?.inStatus === 2 || ledgerInfo[scope.row.id]?.outStatus === 2"
-              >
-                <el-icon><Refresh /></el-icon>
+              <el-button link type="warning" size="small" @click="handleReAuthLedger(scope.row)"
+                v-if="ledgerInfo[scope.row.id]?.inStatus === 2 || ledgerInfo[scope.row.id]?.outStatus === 2">
+                <el-icon>
+                  <Refresh />
+                </el-icon>
                 <span class="reauth-text">重新补录</span>
               </el-button>
             </template>
-            <el-button
-              link
-              type="danger"
-              size="small"
-              @click="handleDelete(scope.row)"
-              v-hasPermi="['transit:transitrecord:remove']"
-            >
-              <el-icon><Delete /></el-icon>
+            <el-button link type="primary" size="small" @click="handlePlayVideo(scope.row)"
+              v-if="scope.row.cameraId || scope.row.outCameraId">
+              <el-icon>
+                <VideoPlay />
+              </el-icon>
+              <span class="play-text">查看视频</span>
+            </el-button>
+            <el-button link type="danger" size="small" @click="handleDelete(scope.row)"
+              v-hasPermi="['transit:transitrecord:remove']">
+              <el-icon>
+                <Delete />
+              </el-icon>
               <span class="delete-text">删除</span>
             </el-button>
           </div>
@@ -251,15 +265,34 @@
 
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum"
       v-model:limit="queryParams.pageSize" @pagination="getList" hide-on-single-page />
+
+    <!-- 视频播放弹窗 -->
+    <el-dialog v-model="videoDialog.visible" title="通行视频"
+      :width="(videoDialog.inUrl && videoDialog.outUrl) ? '80%' : '40%'" :close-on-click-modal="false"
+      :close-on-press-escape="false" @close="handleCloseVideo" class="video-dialog">
+      <div class="video-container" :class="{ 'single-video': !(videoDialog.inUrl && videoDialog.outUrl) }">
+        <div v-if="videoDialog.inUrl" class="video-box">
+          <div class="video-title">入场视频</div>
+          <video ref="inVideoRef" controls autoplay class="video-player" :src="videoDialog.inUrl"
+            type="video/mp4"></video>
+        </div>
+        <div v-if="videoDialog.outUrl" class="video-box">
+          <div class="video-title">出场视频</div>
+          <video ref="outVideoRef" controls autoplay class="video-player" :src="videoDialog.outUrl"
+            type="video/mp4"></video>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup name="Record">
-import { listRecord, getRecord, delRecord, addRecord, updateRecord, reAuth, getLedgerInfo, reAuthLedger } from "@/api/transit/record";
+import { listRecord, getRecord, delRecord, addRecord, updateRecord, reAuth, getLedgerInfo, reAuthLedger, getRecordVideoUrl, listVio } from "@/api/transit/record";
 import { ref } from "vue";
 import { selectIds } from "@/api/system/info";
 import { getEmissionByPlateNo } from "@/api/system/emission";
 import { ElNotification } from "element-plus";
+import { VideoPlay, InfoFilled } from '@element-plus/icons-vue';
 
 const { proxy } = getCurrentInstance();
 const { plate_color, classify_title, transit_status, certified, auto_cargo_info, inbound_outbound_access } = proxy.useDict('plate_color', 'classify_title', 'transit_status', 'certified', 'auto_cargo_info', 'inbound_outbound_access');
@@ -280,6 +313,16 @@ const exportingOnsite = ref(false);
 const exportingMachine = ref(false);
 const ledgerInfo = ref({});
 const enterpriseMap = ref({});
+const isVioMode = ref(false);
+
+// 视频播放相关
+const videoDialog = ref({
+  visible: false,
+  inUrl: '',
+  outUrl: ''
+});
+const inVideoRef = ref(null);
+const outVideoRef = ref(null);
 
 const data = reactive({
   form: {},
@@ -341,7 +384,7 @@ const { queryParams, form, rules, columns } = toRefs(data);
 async function getList() {
   loading.value = true;
   try {
-    const response = await listRecord(queryParams.value);
+    const response = await (isVioMode.value ? listVio(queryParams.value) : listRecord(queryParams.value));
     // 将主键 ID 转换为字符串
     const records = response.rows.map(item => ({
       ...item,
@@ -718,17 +761,20 @@ const needLedger = (companyId) => {
 
 // 修改状态判断函数
 const getLedgerStatusType = (status) => {
-
-  if (status === 2) {
+  if (status === 1) {
     return 'success'; // 已补录使用绿色
+  } else if (status === undefined || status === null) {
+    return 'info'; // 未知状态使用info
   } else {
-    return 'danger'; // 未补录状态使用黄色警告
+    return 'warning'; // 未补录状态使用警告色
   }
 };
 
 const getLedgerStatusText = (status) => {
-  if (status === 2) {
-    return '已补录'; // 未补录的状态文字
+  if (status === 1) {
+    return '已补录';
+  } else if (status === undefined || status === null) {
+    return '未知';
   } else {
     return '未补录';
   }
@@ -738,13 +784,56 @@ const getLedgerStatusText = (status) => {
 function handleReAuthLedger(row) {
   let _ids = row ? [row.id] : ids.value;
   _ids = Array.isArray(_ids) ? _ids : [_ids];
-  
+
   proxy.$modal.confirm('是否重新补录编号为"' + _ids + '"的记录？').then(function () {
     return reAuthLedger(_ids);
   }).then(() => {
     getList();
     proxy.$modal.msgSuccess("重新补录提交成功");
-  }).catch(() => {});
+  }).catch(() => { });
+}
+
+// 处理视频播放
+async function handlePlayVideo(row) {
+  try {
+    videoDialog.value.visible = true;
+    const response = await getRecordVideoUrl(row);
+    if (response.code === 200) {
+      videoDialog.value.inUrl = response.data.in;
+      videoDialog.value.outUrl = response.data.out;
+    } else {
+      throw new Error(response.msg || '获取视频地址失败');
+    }
+  } catch (error) {
+    console.error('获取视频地址失败:', error);
+    ElNotification({
+      title: '错误',
+      message: error.message || '获取视频地址失败',
+      type: 'error',
+      duration: 3000
+    });
+    videoDialog.value.visible = false;
+  }
+}
+
+// 处理视频弹窗关闭
+function handleCloseVideo() {
+  if (inVideoRef.value) {
+    inVideoRef.value.pause();
+    inVideoRef.value.currentTime = 0;
+  }
+  if (outVideoRef.value) {
+    outVideoRef.value.pause();
+    outVideoRef.value.currentTime = 0;
+  }
+  videoDialog.value.inUrl = '';
+  videoDialog.value.outUrl = '';
+}
+
+// 切换违规记录查询模式
+function toggleVioMode() {
+  isVioMode.value = !isVioMode.value;
+  handleQuery();
 }
 
 getEnterpriseList();
@@ -837,5 +926,59 @@ getList();
 
 .el-button.el-button--warning.el-button--link:hover {
   opacity: 0.8;
+}
+
+.video-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  width: 100%;
+}
+
+.video-container.single-video {
+  gap: 0;
+}
+
+.video-container.single-video .video-box {
+  flex: none;
+  width: 100%;
+  max-width: none;
+}
+
+.video-box {
+  flex: 1;
+  width: 50%;
+  min-width: 300px;
+  max-width: 600px;
+}
+
+.video-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+  color: var(--el-text-color-primary);
+}
+
+.video-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 70vh;
+  border-radius: 4px;
+  background-color: #000;
+  object-fit: contain;
+}
+
+:deep(.video-dialog .el-dialog__body) {
+  padding: 20px;
+}
+
+.play-text {
+  margin-left: 4px;
+}
+
+/* 确保按钮垂直居中对齐 */
+.operation-container .el-button {
+  margin: 2px 0;
 }
 </style>

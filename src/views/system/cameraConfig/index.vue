@@ -12,22 +12,24 @@
         </el-tooltip>
       </div>
       <el-tree ref="treeRef" :data="treeData" :props="defaultProps" lazy :load="loadNode" @node-click="handleNodeClick"
-        :filter-node-method="filterNode">
+        :filter-node-method="filterNode" class="custom-tree">
         <template #default="{ node, data }">
-          <span class="custom-tree-node">
-            <el-icon v-if="data.type === 'camera'">
+          <span class="custom-tree-node" :class="[`tree-level-${node.level}`, data.type]">
+            <el-icon v-if="data.type === 'camera'" class="tree-icon camera-icon">
               <VideoCamera />
             </el-icon>
-            <el-icon v-else-if="data.type === 'screen'">
+            <el-icon v-else-if="data.type === 'screen'" class="tree-icon screen-icon">
               <Monitor />
             </el-icon>
-            <el-icon v-else-if="data.type === 'gate'">
+            <el-icon v-else-if="data.type === 'gate'" class="tree-icon gate-icon">
               <SetUp />
             </el-icon>
-            <el-icon v-else-if="data.type === 'add_screen' || data.type === 'add_camera' || data.type === 'add_gate'">
+            <el-icon v-else-if="data.type === 'add_screen' || data.type === 'add_camera' || data.type === 'add_gate'" class="tree-icon add-icon">
               <Plus />
             </el-icon>
-            <el-icon v-else></el-icon>
+            <el-icon v-else-if="data.type === 'company'" class="tree-icon company-icon">
+              <el-icon><OfficeBuilding /></el-icon>
+            </el-icon>
             <span>{{ node.label }}</span>
           </span>
         </template>
@@ -573,7 +575,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
-import { VideoCamera, Monitor, SetUp, Refresh, Delete, Plus, Rank, Search, QuestionFilled } from '@element-plus/icons-vue'
+import { VideoCamera, Monitor, SetUp, Refresh, Delete, Plus, Rank, Search, QuestionFilled, OfficeBuilding } from '@element-plus/icons-vue'
 import { selectIds } from "@/api/system/info";
 import { getGateList, getDeviceList, getGateInfo, saveScreen, updateScreen } from '@/api/system/device'
 import { addCamera, updateCamera, authCamera } from '@/api/system/camera'
@@ -907,7 +909,7 @@ const handleAdd = async () => {
         deviceId: cameraForm.deviceId,
         channelId: cameraForm.channelId,
         localChannelId: cameraForm.localChannelId,
-        gateId: currentNode.value?.parent?.data?.id,
+        gateId: cameraForm.gateId
       }
       try {
         await addCamera(saveData)
@@ -1427,16 +1429,37 @@ const handleAuthGate = async () => {
   display: flex;
   gap: 20px;
   padding: 20px;
+  height: calc(100vh - 40px); /* 减去padding的高度 */
+  overflow: hidden; /* 防止整体出现滚动条 */
 }
 
 .tree-container {
   width: 20%;
   border-right: 1px solid #dcdfe6;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tree-header {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  align-items: center;
+  flex-shrink: 0; /* 防止header被压缩 */
+}
+
+.custom-tree {
+  flex: 1;
+  overflow-y: auto; /* 添加垂直滚动条 */
+  padding: 10px;
 }
 
 .config-form {
   flex: 1;
   padding-bottom: 80px;
+  overflow-y: auto; /* 添加垂直滚动条 */
+  height: 100%;
 }
 
 .custom-tree-node {
@@ -1798,4 +1821,89 @@ const handleAuthGate = async () => {
   width: 160px;
 }
 
+/* 树形结构样式优化 */
+.custom-tree {
+  font-size: 12px;
+}
+
+.tree-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+/* 企业级别 */
+.tree-level-1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.tree-level-1 .company-icon {
+  color: #409EFF;
+  font-size: 16px;
+}
+
+/* 道闸级别 */
+.tree-level-2 {
+  font-size: 15px;
+  font-weight: 500;
+  color: #606266;
+}
+
+.tree-level-2 .gate-icon {
+  color: #67C23A;
+}
+
+/* 设备级别 */
+.tree-level-3 {
+  font-size: 14px;
+  color: #909399;
+}
+
+/* 相机图标样式 */
+.camera-icon {
+  color: #E6A23C;
+}
+
+/* 屏幕图标样式 */
+.screen-icon {
+  color: #909399;
+}
+
+/* 新增节点样式 */
+.add_screen,
+.add_camera,
+.add_gate {
+  color: #409EFF !important;
+  font-weight: normal !important;
+}
+
+.add-icon {
+  color: #409EFF;
+}
+
+/* 鼠标悬停效果 */
+.custom-tree-node:hover {
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+/* 选中状态样式 */
+:deep(.el-tree-node.is-current > .el-tree-node__content) {
+  background-color: #ecf5ff;
+  color: #409EFF;
+}
+
+/* 树节点间距 */
+:deep(.el-tree-node__content) {
+  height: 36px;
+  padding: 4px 8px;
+  margin: 2px 0;
+}
+
+/* 缩进控制 */
+:deep(.el-tree-node__children) {
+  padding-left: 20px;
+}
 </style>

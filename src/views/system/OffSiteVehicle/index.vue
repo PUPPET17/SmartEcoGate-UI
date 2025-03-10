@@ -74,7 +74,7 @@
 
     <el-table v-loading="loading" :data="OffSiteVehicleList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="企业名称" align="center" show-overflow-tooltip>
+      <el-table-column label="企业名称" align="center" width="120" show-overflow-tooltip>
         <template #default="scope">
           {{ getCompanyName(scope.row.companyId) }}
         </template>
@@ -577,13 +577,9 @@ const data = reactive({
 const { queryParams, form, rules } = toRefs(data);
 
 const unit_options = [
-  '个',
-  '升',
-  '吨',
-  '公斤',
-  '立方米',
-  '箱',
-  '件'
+  'T',
+  'L',
+  'P',
 ];
 
 // 添加计算属性判断是否显示地址字段

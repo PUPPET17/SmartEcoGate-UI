@@ -66,7 +66,7 @@
 
     <el-table v-loading="loading" :data="onSiteVehicleList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="企业名称" align="center" prop="companyName" />
+      <el-table-column label="企业名称" align="center" prop="companyName" width="120"/>
       <el-table-column label="车牌号" align="center" prop="plateNumber" />
       <el-table-column label="车牌颜色" align="center" prop="plateColor">
         <template #default="scope">
@@ -461,12 +461,16 @@ const showFields = computed(() => {
       'vin',
       'environmentalRatingCode',
       'registrationDate',
+      'plateColor',
+      'vehicleType',
+      'certDate',
       'prodDate',
       'brandModel',
       'emissionStage',
       'fuelType',
       'ownerName',
-      'drivingImage'
+      'drivingImage',
+      'accompanyingDocumentsImage'
     ];
   }
 
@@ -835,12 +839,9 @@ async function getEnterpriseList() {
 }
 
 const unit_options = [
-  '升',
-  '吨',
-  '公斤',
-  '立方米',
-  '箱',
-  '件'
+  'T',
+  'L',
+  'P',
 ];
 
 const outboundNameRules = computed(() => {

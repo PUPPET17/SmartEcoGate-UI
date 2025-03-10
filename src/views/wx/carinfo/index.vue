@@ -152,8 +152,11 @@
                 <el-select v-model="form.fleetName" placeholder="请选择车队名称" clearable>
                   <el-option label="自有" value="自有" />
                   <el-option label="个人" value="个人" />
-                  <el-option v-if="enterpriseIds[0]" :label="enterpriseIds[0].companyName"
-                    :value="enterpriseIds[0].companyName" />
+                  <el-option 
+                    v-if="enterpriseIds[0]?.companyName" 
+                    :label="enterpriseIds[0].companyName"
+                    :value="enterpriseIds[0].companyName" 
+                  />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -595,21 +598,58 @@ const disableDoubleTapZoom = (e) => {
 
 async function getEnterpriseList() {
   try {
+    console.log("开始获取企业信息...");
     const response = await selectIds(route.query.aid);
-    enterpriseIds.value = [response.data];
+    console.log("企业信息API响应:", response);
+    if (response && response.code === 200) {
+      // 确保设置完整的企业信息
+      enterpriseIds.value = [{
+        apiStrategy: response.data?.apiStrategy || 1,
+        companyId: route.query.aid,
+        companyName: response.data?.companyName || '默认企业'
+      }];
+      console.log("设置企业信息成功:", enterpriseIds.value);
+    } else {
+      console.error("API响应失败:", response);
+      enterpriseIds.value = [];
+    }
   } catch (error) {
-    console.log("获取企业信息失败", error);
+    console.error("获取企业信息失败:", error);
+    enterpriseIds.value = [];
   }
 }
 
 getEnterpriseList();
 
 const showAddressField = computed(() => {
-  return enterpriseIds.value[0]?.apiStrategy === 3;
+  const apiStrategy = enterpriseIds.value[0]?.apiStrategy;
+  return apiStrategy === 3;
 });
 
 const showEngineFields = computed(() => {
-  return enterpriseIds.value[0]?.apiStrategy === 4;
+  const apiStrategy = enterpriseIds.value[0]?.apiStrategy;
+  return apiStrategy === 4;
+});
+
+const showFleetNameInput = computed(() => {
+  if (!enterpriseIds.value || !enterpriseIds.value[0]) {
+    console.log("企业信息未加载完成");
+    return false;
+  }
+  const apiStrategy = enterpriseIds.value[0]?.apiStrategy;
+  console.log("当前 apiStrategy:", apiStrategy);
+  // 如果 apiStrategy 未定义，默认返回 false（显示下拉框）
+  if (typeof apiStrategy === 'undefined' || apiStrategy === null) {
+    console.log("apiStrategy未定义，显示下拉框");
+    return false;
+  }
+  if (apiStrategy !== 1) {
+    console.log("非apiStrategy=1的情况，显示输入框");
+    return true;
+  } else {
+    console.log("apiStrategy=1的情况，显示下拉框");
+    return false;
+  }
 });
 
 const addressRules = computed(() => {
@@ -692,22 +732,14 @@ const goodsDestinationRules = computed(() => {
 });
 
 const unit_options = [
-  '个',
-  '升',
-  '吨',
-  '公斤',
-  '立方米',
-  '箱',
-  '件'
+  'T',
+  'L',
+  'P',
 ];
 
 const goBack = () => {
   router.go(-1)
 }
-
-const showFleetNameInput = computed(() => {
-  return enterpriseIds.value[0]?.apiStrategy !== 1;
-});
 
 const handleLoadingCapacityInput = (value) => {
   // 移除小数点和非数字字符

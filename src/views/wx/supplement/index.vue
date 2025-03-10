@@ -165,13 +165,9 @@ const data = reactive({
 const { form, rules } = toRefs(data);
 
 const unit_options = [
-    '个',
-    '升',
-    '吨',
-    '公斤',
-    '立方米',
-    '箱',
-    '件'
+  'T',
+  'L',
+  'P',
 ];
 
 // 提交表单

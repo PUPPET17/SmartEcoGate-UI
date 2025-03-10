@@ -78,3 +78,20 @@ export function getstat(companyId) {
     method: 'get'
   })
 }
+
+export function getRecordVideoUrl(data){
+  return request({
+    url: `/gb28181/record`,
+    method: 'post',
+    data: data
+  })
+}
+
+// 查询违规通行记录列表
+export function listVio(query) {
+  return request({
+    url: '/transit/record/listVio',
+    method: 'get',
+    params: query
+  })
+}

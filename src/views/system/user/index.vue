@@ -20,6 +20,10 @@
                   <el-input v-model="queryParams.userName" placeholder="请输入用户名称" clearable style="width: 240px"
                      @keyup.enter="handleQuery" />
                </el-form-item>
+               <el-form-item label="用户昵称" prop="nickName">
+                  <el-input v-model="queryParams.nickName" placeholder="请输入用户昵称" clearable style="width: 240px"
+                     @keyup.enter="handleQuery" />
+               </el-form-item>
                <el-form-item label="手机号码" prop="phonenumber">
                   <el-input v-model="queryParams.phonenumber" placeholder="请输入手机号码" clearable style="width: 240px"
                      @keyup.enter="handleQuery" />
@@ -115,7 +119,7 @@
                   <el-form-item label="状态">
                      <el-radio-group v-model="form.status">
                         <el-radio v-for="dict in sys_normal_disable" :key="dict.value" :value="dict.value">{{ dict.label
-                           }}</el-radio>
+                        }}</el-radio>
                      </el-radio-group>
                   </el-form-item>
                </el-col>
@@ -134,7 +138,7 @@
                   <el-form-item label="归属部门" prop="deptId">
                      <el-tree-select v-model="form.deptId" :data="deptOptions"
                         :props="{ value: 'id', label: 'label', children: 'children' }" value-key="id"
-                        placeholder="请选择归属部门" check-strictly show-checkbox default-expand-all filterable/>
+                        placeholder="请选择归属部门" check-strictly show-checkbox default-expand-all filterable />
                   </el-form-item>
                </el-col>
                <el-col :span="12">
@@ -174,7 +178,7 @@
 <script setup name="User">
 import { getToken } from "@/utils/auth";
 import { changeUserStatus, listUser, resetUserPwd, delUser, getUser, updateUser, addUser, deptTreeSelect } from "@/api/system/user";
-import { selectIds,updateInfo } from "@/api/system/info";
+import { selectIds, updateInfo } from "@/api/system/info";
 
 const router = useRouter();
 const { proxy } = getCurrentInstance();
@@ -230,7 +234,8 @@ const data = reactive({
       userName: undefined,
       phonenumber: undefined,
       status: undefined,
-      deptId: undefined
+      deptId: undefined,
+      nickName: undefined
    },
    rules: {
       userName: [{ required: true, message: "用户名称不能为空", trigger: "blur" }, { min: 2, max: 20, message: "用户名称长度必须介于 2 和 20 之间", trigger: "blur" }],
@@ -249,17 +254,17 @@ const { queryParams, form, rules } = toRefs(data);
 
 // 添加计算属性判断是否为业务员角色
 const isBusinessRole = computed(() => {
-   return form.value.roleIds && (form.value.roleIds.includes(2)||form.value.roleIds.includes(102)); // 2为业务员角色ID
+   return form.value.roleIds && (form.value.roleIds.includes(2) || form.value.roleIds.includes(102)); // 2为业务员角色ID
 });
 
 // 修改 watch 逻辑
 watch(() => form.value.roleIds, (newRoles) => {
-  if (newRoles && newRoles.includes(2)) {
-    data.rules.companyId = [];  // 清除必填验证
-    form.value.companyId = ''; // 清空已选择的企业
-  } else {
-    data.rules.companyId = [{ required: true, message: "企业不能为空", trigger: "change" }];
-  }
+   if (newRoles && newRoles.includes(2)) {
+      data.rules.companyId = [];  // 清除必填验证
+      form.value.companyId = ''; // 清空已选择的企业
+   } else {
+      data.rules.companyId = [{ required: true, message: "企业不能为空", trigger: "change" }];
+   }
 }, { deep: true });
 
 /** 通过条件过滤节点  */
@@ -277,7 +282,7 @@ watch(deptName, val => {
 function getDeptTree() {
    deptTreeSelect().then(response => {
       deptOptions.value = response.data;
-      console.log("deptOptions.value:",deptOptions.value);
+      console.log("deptOptions.value:", deptOptions.value);
    });
 };
 
@@ -467,7 +472,7 @@ function handleUpdate(row) {
       roleOptions.value = response.roles;
       form.value.postIds = response.postIds;
       form.value.roleIds = response.roleIds;
-      
+
       // 立即检查是否为业务员角色并更新验证规则
       if (response.roleIds && response.roleIds.includes(2)) {
          data.rules.companyId = [];  // 清除必填验证
@@ -475,7 +480,7 @@ function handleUpdate(row) {
       } else {
          data.rules.companyId = [{ required: true, message: "企业不能为空", trigger: "change" }];
       }
-      
+
       open.value = true;
       title.value = "修改用户";
       form.password = "";
@@ -489,50 +494,50 @@ function submitForm() {
       if (valid) {
          if (form.value.userId != undefined) {
             const updateResponse = await updateUser(form.value);
-            
+
             if (updateResponse.code === 200) {
-                // 如果不是业务员角色，则执行企业绑定
-                if (!form.value.roleIds.includes(2) && !form.value.roleIds.includes(102)) { 
-                    const data = { 
-                        companyId: form.value.companyId,
-                        userId: form.value.userId,
-                        deptId: form.value.deptId
-                    }
-                    const bindResponse = await updateInfo(data);
-                    if (bindResponse.code === 200) {
-                        proxy.$modal.msgSuccess("企业绑定成功");
-                    } else {
-                        proxy.$modal.msgError(bindResponse.msg || "企业绑定失败");
-                        return;
-                    }
-                }
-                
-                proxy.$modal.msgSuccess("修改成功");
-                open.value = false;
-                getList();
+               // 如果不是业务员角色，则执行企业绑定
+               if (!form.value.roleIds.includes(2) && !form.value.roleIds.includes(102)) {
+                  const data = {
+                     companyId: form.value.companyId,
+                     userId: form.value.userId,
+                     deptId: form.value.deptId
+                  }
+                  const bindResponse = await updateInfo(data);
+                  if (bindResponse.code === 200) {
+                     proxy.$modal.msgSuccess("企业绑定成功");
+                  } else {
+                     proxy.$modal.msgError(bindResponse.msg || "企业绑定失败");
+                     return;
+                  }
+               }
+
+               proxy.$modal.msgSuccess("修改成功");
+               open.value = false;
+               getList();
             } else {
-                proxy.$modal.msgError(updateResponse.msg || "修改失败");
+               proxy.$modal.msgError(updateResponse.msg || "修改失败");
             }
          } else {
             // 新增用户
             const response = await addUser(form.value);
-            if (response.code === 200) { 
-                proxy.$modal.msgSuccess("新增成功");
-                form.value.userId = response.data.userId;
-                if (!form.value.roleIds.includes(2) && !form.value.roleIds.includes(102)) { 
-                    const data = { 
-                        companyId: form.value.companyId,
-                        userId: form.value.userId,
-                        deptId: form.value.deptId
-                    }
-                    await updateInfo(data);
-                    proxy.$modal.msgSuccess("企业绑定成功");
-                }
-                
-                open.value = false;
-                getList();
+            if (response.code === 200) {
+               proxy.$modal.msgSuccess("新增成功");
+               form.value.userId = response.data.userId;
+               if (!form.value.roleIds.includes(2) && !form.value.roleIds.includes(102)) {
+                  const data = {
+                     companyId: form.value.companyId,
+                     userId: form.value.userId,
+                     deptId: form.value.deptId
+                  }
+                  await updateInfo(data);
+                  proxy.$modal.msgSuccess("企业绑定成功");
+               }
+
+               open.value = false;
+               getList();
             } else {
-                proxy.$modal.msgError(response.msg || "新增失败");
+               proxy.$modal.msgError(response.msg || "新增失败");
             }
          }
       }
@@ -540,14 +545,14 @@ function submitForm() {
 };
 
 async function getEnterpriseList() {
-  try {
-    const response = await selectIds();
-    enterpriseIds.value = response.rows;
-    console.log("enterpriseIds.value:",enterpriseIds.value);
-  } catch (error) {
-    console.log("获取企业列表失败", error);
-  }
-}  
+   try {
+      const response = await selectIds();
+      enterpriseIds.value = response.rows;
+      console.log("enterpriseIds.value:", enterpriseIds.value);
+   } catch (error) {
+      console.log("获取企业列表失败", error);
+   }
+}
 
 getEnterpriseList();
 getDeptTree();

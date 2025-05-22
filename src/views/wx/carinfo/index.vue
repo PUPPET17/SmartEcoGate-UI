@@ -311,7 +311,7 @@
 </template>
 
 <script setup lang="js">
-import { addOffSiteVehicleNoAuth, openGate, selectIds, checkOffSiteVehicle } from "@/api/wx/offSite";
+import { addOffSiteVehicleNoAuth, openGate, selectIds, checkOffSiteVehicle, queryOffSiteVehicle } from "@/api/wx/offSite";
 import { useRoute, useRouter } from 'vue-router';
 
 import { onMounted } from 'vue';
@@ -325,6 +325,44 @@ const router = useRouter();
 
 const enterpriseIds = ref([]);
 const isFleetNameChanged = ref(false);
+
+// 添加车牌号验证方法
+const validatePlateNumber = async (rule, value, callback) => {
+  if (!value) {
+    callback();
+    return;
+  }
+
+  const invalidCharsRegex = /[^\u4e00-\u9fa5a-zA-Z0-9]/;
+  if (invalidCharsRegex.test(value)) {
+    ElMessage.error('车牌号不能包含空格或特殊字符');
+    callback(new Error('车牌号不能包含空格或特殊字符'));
+    return;
+  }
+  
+  try {
+    const response = await queryOffSiteVehicle(route.query.aid, value);
+    // 新的接口返回格式：
+    // 车牌号不存在时：{ code: 200, msg: "正常" }
+    // 车牌号存在时：{ code: 200, msg: "车辆已存在" }
+    if (response.msg === "正常") {
+      // 车牌号不存在，可以使用
+      callback();
+    } else if (response.msg === "车辆已存在") {
+      // 车牌号已存在
+      ElMessage.warning('该车牌号已被注册');
+      callback(new Error('该车牌号已被注册'));
+    } else {
+      // 其他情况
+      ElMessage.error('车牌号验证失败，请重试');
+      callback(new Error('验证失败，请重试'));
+    }
+  } catch (error) {
+    console.error('车牌号验证失败:', error);
+    ElMessage.error('车牌号验证失败，请稍后重试');
+    callback(new Error('验证失败，请重试'));
+  }
+};
 
 const data = reactive({
   form: {
@@ -371,7 +409,8 @@ const data = reactive({
     companyId: [{ required: true, message: '公司id不能为空', trigger: 'blur' }],
     plateNumber: [
       { required: true, message: '传统车牌7个字符，新能源车8个字符', trigger: 'blur' },
-      { min: 7, max: 8, message: '传统车牌7个字符，新能源车8个字符', trigger: 'blur' }
+      { min: 7, max: 8, message: '传统车牌7个字符，新能源车8个字符', trigger: 'blur' },
+      { validator: validatePlateNumber, trigger: 'blur' }
     ],
     vin: [
       { required: true, message: 'VIN不能为空', trigger: 'blur' },
@@ -556,11 +595,31 @@ const parsedOcrData = ref(null);
 
 onMounted(() => {
   document.body.addEventListener('touchstart', disableDoubleTapZoom, { passive: false });
-  const ocrData = route.query.ocrData;
-  const aid = route.query.aid;
-  if (ocrData) {
+
+  // 安全获取并 decode 参数
+  const getDecodedParam = (param) => {
+    if (typeof param !== 'string') return null;
     try {
-      parsedOcrData.value = JSON.parse(ocrData);
+      let decoded = param;
+      for (let i = 0; i < 2; i++) {
+        decoded = decodeURIComponent(decoded);
+        if (/^[\[{"]/.test(decoded) || /^\d+$/.test(decoded)) return decoded;
+      }
+      return decoded;
+    } catch {
+      return param;
+    }
+  };
+
+  const ocrDataRaw = route.query.ocrData;
+  const aidRaw = route.query.aid;
+
+  const ocrDataStr = getDecodedParam(ocrDataRaw);
+  const aid = getDecodedParam(aidRaw);
+
+  if (ocrDataStr) {
+    try {
+      parsedOcrData.value = JSON.parse(ocrDataStr);
       form.value.companyId = aid;
       form.value.plateNumber = parsedOcrData.value.vehicleLicenseId || null;
       form.value.vin = parsedOcrData.value.vehicleIdentificationCode || null;
@@ -585,7 +644,8 @@ onMounted(() => {
       form.value.engineType = parsedOcrData.value.engine || null;
       form.value.engineManufacturer = parsedOcrData.value.engineManufacturer || null;
     } catch (error) {
-      ElMessage.error('解析 OCR 数据失败:', error);
+      console.error(error);
+      ElMessage.error('解析 OCR 数据失败');
     }
   }
 });
@@ -769,7 +829,6 @@ const handleOutboundVolumeInput = (value) => {
   // 移除小数点和非数字字符
   form.value.outboundVolume = value.toString().replace(/[^\d]/g, '');
 };
-
 </script>
 
 <style scoped>

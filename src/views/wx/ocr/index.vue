@@ -17,14 +17,19 @@
                 <div class="form-group">
                     <label class="input-label">车牌号码</label>
                     <el-input type="text" v-model="formData.carNumber" class="input-field" placeholder="请输入车牌号"
-                        @input="handleInput"
-                        style="text-transform: uppercase" />
+                        @input="handleInput" style="text-transform: uppercase" />
                 </div>
 
                 <div v-if="ocrData" class="form-group">
                     <label class="input-label">识别结果</label>
                     <div class="ocr-result">
                         {{ ocrData.vehicleLicenseId }}
+                        <button class="copy-button" @click="copyOcrResult">
+                            <svg class="copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -38,7 +43,7 @@
                                         d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
-                                <div class="upload-text" >
+                                <div class="upload-text">
                                     <label class="upload-button">
                                         <span>拍摄</span>
                                         <input type="file" ref="fileInput" accept="image/*" @change="handleFileChange2"
@@ -95,6 +100,11 @@ export default {
         const captureType = ref(0);
         const ocrData = ref(null);
 
+        // 初始化时检查URL中是否有plateNo参数
+        if (route.query.plateNo) {
+            formData.carNumber = route.query.plateNo.toString().toUpperCase();
+        }
+
         const triggerFileInput = () => {
             document.querySelector('input[type="file"]').click();
         };
@@ -110,11 +120,11 @@ export default {
                         const canvas = document.createElement('canvas');
                         let width = img.width;
                         let height = img.height;
-                        
+
                         // 设置最大宽度和高度
                         const maxWidth = 1200;
                         const maxHeight = 800;
-                        
+
                         if (width > height) {
                             if (width > maxWidth) {
                                 height = Math.round((height * maxWidth) / width);
@@ -126,13 +136,13 @@ export default {
                                 height = maxHeight;
                             }
                         }
-                        
+
                         canvas.width = width;
                         canvas.height = height;
-                        
+
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
+
                         // 转换为 Blob，压缩质量为 0.8
                         canvas.toBlob((blob) => {
                             resolve(new File([blob], file.name, { type: 'image/jpeg' }));
@@ -148,16 +158,16 @@ export default {
                 ElMessage.warning('请选择文件');
                 return;
             }
-            
+
             // 显示预览图
             imagePreview.value = URL.createObjectURL(file);
-            
+
             try {
                 // 压缩图片
                 const compressedFile = await compressImage(file);
                 console.log('原始文件大小：', file.size / 1024 / 1024, 'MB');
                 console.log('压缩后文件大小：', compressedFile.size / 1024 / 1024, 'MB');
-                
+
                 const formDataUpload = new FormData();
                 formDataUpload.append('file', compressedFile);
 
@@ -181,7 +191,7 @@ export default {
                 ocrData.value = response.data;
                 console.log(ocrData.value);
             } else {
-                ElMessage.error(response.msg|| '识别失败');
+                ElMessage.error(response.msg || '识别失败');
             }
         };
 
@@ -199,7 +209,7 @@ export default {
                 return;
             }
             if (ocrData.value.vehicleLicenseId !== formData.carNumber) {
-                console.log(ocrData.value.vehicleLicenseId+"    "+formData.carNumber);
+                console.log(ocrData.value.vehicleLicenseId + "    " + formData.carNumber);
                 ElMessage.error('识别结果与填写的车牌号不一致，请检查车牌号是否填写正确或重新上传图片');
                 return;
             } else {
@@ -263,8 +273,8 @@ export default {
                 ocrData.value = response.data;
                 router.push({
                     path: '/wx/carinfo',
-                    query: { 
-                        ocrData: JSON.stringify(ocrData.value), 
+                    query: {
+                        ocrData: JSON.stringify(ocrData.value),
                         aid: route.query.aid,
                         isAutoOpen: route.query.isAutoOpen || '0'
                     }
@@ -291,6 +301,46 @@ export default {
             formData.carNumber = value.toUpperCase();
         };
 
+        // 添加复制功能
+        const copyOcrResult = () => {
+            if (ocrData.value && ocrData.value.vehicleLicenseId) {
+                // 创建一个临时textarea元素
+                const element = document.createElement('textarea');
+                // 设置要复制的文本
+                element.value = ocrData.value.vehicleLicenseId;
+                // 防止在手机上弹出键盘
+                element.setAttribute('readonly', '');
+                // 设置样式使其不可见
+                element.style.position = 'absolute';
+                element.style.left = '-9999px';
+                element.style.fontSize = '12pt'; // 防止iOS缩放
+                
+                // 添加到文档中
+                document.body.appendChild(element);
+                
+                // 选择文本
+                element.select();
+                // 兼容iOS
+                element.setSelectionRange(0, element.value.length);
+                
+                // 执行复制
+                let isSuccess = false;
+                try {
+                    isSuccess = document.execCommand('copy');
+                    if (isSuccess) {
+                        ElMessage.success('已复制到剪贴板');
+                    } else {
+                        ElMessage.error('复制失败，请手动复制');
+                    }
+                } catch (err) {
+                    ElMessage.error('复制失败: ' + err);
+                }
+                
+                // 移除临时元素
+                document.body.removeChild(element);
+            }
+        };
+
         return {
             formData,
             errors,
@@ -308,6 +358,7 @@ export default {
             checkPlateNumAndRoute,
             ocrData,
             handleInput,
+            copyOcrResult,
         };
     }
 };
@@ -533,7 +584,8 @@ export default {
 .submit-button {
     width: 100%;
     padding: 12px 0;
-    background-color: #409EFF;  /* 蓝色主题色，可根据需要调整 */
+    background-color: #409EFF;
+    /* 蓝色主题色，可根据需要调整 */
     color: white;
     border: none;
     border-radius: 4px;
@@ -604,5 +656,52 @@ export default {
     border-radius: 6px;
     color: #0369a1;
     font-size: 14px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.copy-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    position: relative;
+    color: #3B82F6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+}
+
+.copy-button:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.copy-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.copy-button .tooltip {
+    position: absolute;
+    bottom: -25px;
+    right: 0;
+    background-color: #374151;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.copy-button:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
 }
 </style>

@@ -24,7 +24,7 @@
         <el-col :span="6">
           <el-form-item label="车牌颜色" prop="plateColorType" style="margin-bottom: 18px;">
             <el-select v-model="queryParams.plateColorType" placeholder="请选择车牌颜色" clearable style="width: 180px;">
-              <el-option v-for="dict in plate_color" :key="dict.value" :label="dict.label" :value="dict.value" />
+              <el-option v-for="dict in plate_color_type" :key="dict.value" :label="dict.label" :value="dict.value" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -35,6 +35,13 @@
             </el-select>
           </el-form-item>
         </el-col>
+        <el-col :span="6">
+          <el-form-item label="排放标准" prop="emissionStage" style="margin-bottom: 18px;">
+            <el-select v-model="queryParams.emissionStage" placeholder="请选择排放标准" clearable style="width: 180px;">
+              <el-option v-for="dict in emission_standard" :key="dict.value" :label="dict.label" :value="dict.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
         <el-col :span="12">
           <el-form-item label="创建时间" prop="dateRange">
             <el-date-picker v-model="dateRange" type="datetimerange" range-separator="至" start-placeholder="开始日期"
@@ -42,7 +49,20 @@
               @change="handleDateRangeChange" />
           </el-form-item>
         </el-col>
-        <el-col :span="12"></el-col>
+        <el-col :span="6">
+          <el-form-item label="入场补录方式" prop="isInboundAutoEntry" label-width="100px">
+            <el-select v-model="queryParams.isInboundAutoEntry" placeholder="请选择入场补录方式" style="width: 170px;">
+              <el-option v-for="item in auto_cargo_info" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="6">
+          <el-form-item label="出场补录方式" prop="isOutboundAutoEntry" label-width="100px">
+            <el-select v-model="queryParams.isOutboundAutoEntry" placeholder="请选择出场补录方式" style="width: 170px;">
+              <el-option v-for="item in auto_cargo_info" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+          </el-form-item>
+        </el-col> 
         <el-col :span="6">
           <el-form-item label="通行状态" prop="state">
             <el-select v-model="queryParams.state" placeholder="请选择通行状态" clearable style="width: 180px;">
@@ -64,6 +84,8 @@
             </el-select>
           </el-form-item>
         </el-col>
+        <el-col :span="6"></el-col>
+        
         <el-col :span="24" style="text-align: left;margin-bottom: 20px;">
           <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
           <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -107,6 +129,13 @@
           </el-icon>导出非道路车辆台账
         </el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button :loading="exportingMachine" @click="handleExportLangFang" v-hasPermi="['transit:record:export']">
+          <el-icon>
+            <Download />
+          </el-icon>廊坊导出通行记录
+        </el-button>
+      </el-col>
       <!-- <el-col :span="1.5">
         <el-button type="warning" plain icon="Refresh" :disabled="multiple"
           @click="handleReAuthLedger">重新补录记录</el-button>
@@ -125,7 +154,7 @@
       </el-table-column>
       <el-table-column v-if="columns[3].visible" label="车牌颜色码" align="center" prop="plateColorType">
         <template #default="scope">
-          <dict-tag :options="plate_color" :value="scope.row.plateColorType" />
+          <dict-tag :options="plate_color_type" :value="scope.row.plateColorType" />
         </template>
       </el-table-column>
       <el-table-column v-if="columns[4].visible" label="入场照片" align="center" prop="inImg" width="100">
@@ -187,14 +216,18 @@
               <span style="margin-right: 8px;">入场:</span>
               <dict-tag :options="certified" :value="scope.row.inboundCertStatus" />
               <el-tooltip v-if="scope.row.certMessage" :content="scope.row.certMessage" placement="top">
-                <el-icon style="margin-left: 2px;"><InfoFilled /></el-icon>
+                <el-icon style="margin-left: 2px;">
+                  <InfoFilled />
+                </el-icon>
               </el-tooltip>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="margin-right: 8px;">出场:</span>
               <dict-tag :options="certified" :value="scope.row.outboundCertStatus" />
               <el-tooltip v-if="scope.row.userName" :content="scope.row.userName" placement="top">
-                <el-icon style="margin-left: 2px;"><InfoFilled /></el-icon>
+                <el-icon style="margin-left: 2px;">
+                  <InfoFilled />
+                </el-icon>
               </el-tooltip>
             </div>
           </div>
@@ -222,7 +255,7 @@
           <dict-tag :options="auto_cargo_info" :value="scope.row.isOutboundAutoEntry" />
         </template>
       </el-table-column>
-      
+
       <el-table-column label="操作" align="center" min-width="120" fixed="right">
         <template #default="scope">
           <div class="operation-container">
@@ -242,6 +275,12 @@
                   <Refresh />
                 </el-icon>
                 <span class="reauth-text">重新补录</span>
+              </el-button>
+              <el-button link type="primary" size="small" @click="handleSupplementCargo(scope.row)">
+                <el-icon>
+                  <EditPen />
+                </el-icon>
+                <span class="supplement-text">补录货物</span>
               </el-button>
             </template>
             <el-button link type="primary" size="small" @click="handlePlayVideo(scope.row)"
@@ -283,6 +322,14 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 货物信息补录弹窗 -->
+    <cargo-supplement-dialog
+      v-model:visible="cargoSupplementVisible"
+      :record="currentRecord"
+      :ledger-info="currentLedgerInfo"
+      @refresh="getList"
+    />
   </div>
 </template>
 
@@ -292,10 +339,21 @@ import { ref } from "vue";
 import { selectIds } from "@/api/system/info";
 import { getEmissionByPlateNo } from "@/api/system/emission";
 import { ElNotification } from "element-plus";
-import { VideoPlay, InfoFilled } from '@element-plus/icons-vue';
+import { VideoPlay, InfoFilled, EditPen, Refresh } from '@element-plus/icons-vue';
+import CargoSupplementDialog from './cargoSupplementDialog.vue';
 
 const { proxy } = getCurrentInstance();
-const { plate_color, classify_title, transit_status, certified, auto_cargo_info, inbound_outbound_access } = proxy.useDict('plate_color', 'classify_title', 'transit_status', 'certified', 'auto_cargo_info', 'inbound_outbound_access');
+const { plate_color_type, classify_title, transit_status, certified, auto_cargo_info, inbound_outbound_access } = proxy.useDict('plate_color_type', 'classify_title', 'transit_status', 'certified', 'auto_cargo_info', 'inbound_outbound_access');
+
+// 自定义排放标准字典
+const emission_standard = ref([
+  { value: '4', label: '国四及以下' },
+  { value: '5', label: '国五' },
+  { value: '6', label: '国六' },
+  { value: '7', label: '国七' },
+  { value: 'D', label: '电动' },
+  { value: 'X', label: '排放标准未知' }
+]);
 
 const recordList = ref([]);
 const open = ref(false);
@@ -311,6 +369,7 @@ const enterpriseIds = ref([]);
 const exportingOffsite = ref(false);
 const exportingOnsite = ref(false);
 const exportingMachine = ref(false);
+const exportingLangFang = ref(false);
 const ledgerInfo = ref({});
 const enterpriseMap = ref({});
 const isVioMode = ref(false);
@@ -323,6 +382,10 @@ const videoDialog = ref({
 });
 const inVideoRef = ref(null);
 const outVideoRef = ref(null);
+
+const currentRecord = ref(null);
+const currentLedgerInfo = ref(null);
+const cargoSupplementVisible = ref(false);
 
 const data = reactive({
   form: {},
@@ -339,7 +402,8 @@ const data = reactive({
     classifyTitle: null,
     outboundCertStatus: null,
     inboundCertStatus: null,
-    state: null
+    state: null,
+    emissionStage: null
   },
   rules: {
   },
@@ -728,6 +792,38 @@ async function handleExportMachine() {
   }
 }
 
+async function handleExportLangFang() {
+  try {
+    exportingLangFang.value = true;
+    ElNotification({
+      title: '导出进度',
+      message: '正在导出数据，请稍候...',
+      type: 'info',
+      position: 'bottom-right',
+      duration: 0
+    });
+
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('导出请求超时')), 30000);
+    });
+
+    const exportPromise = proxy.download('transit/record/export/lf', {
+      ...queryParams.value
+    }, `record_${new Date().getTime()}.xlsx`);
+
+    await Promise.race([exportPromise, timeoutPromise]);
+
+    ElNotification.closeAll();
+    ElNotification.success('导出成功');
+  } catch (error) {
+    console.error('导出失败:', error);
+    ElNotification.closeAll();
+    ElNotification.error(error.message || '导出失败，请重试');
+  } finally {
+    exportingMachine.value = false;
+  }
+}
+
 // 处理日期范围变化
 function handleDateRangeChange(val) {
   if (val) {
@@ -834,6 +930,13 @@ function handleCloseVideo() {
 function toggleVioMode() {
   isVioMode.value = !isVioMode.value;
   handleQuery();
+}
+
+// 处理补录货物信息
+function handleSupplementCargo(row) {
+  currentRecord.value = row;
+  currentLedgerInfo.value = ledgerInfo.value[row.id] || {};
+  cargoSupplementVisible.value = true;
 }
 
 getEnterpriseList();

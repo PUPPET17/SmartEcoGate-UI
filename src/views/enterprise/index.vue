@@ -4,42 +4,23 @@
       <div slot="header" class="clearfix">
         <span>企业批量导入</span>
       </div>
-      
-      <el-upload
-        class="upload-demo"
-        drag
-        action=""
-        :auto-upload="false"
-        :on-change="handleFileChange"
-        accept=".csv"
-      >
+
+      <el-upload class="upload-demo" drag action="" :auto-upload="false" :on-change="handleFileChange" accept=".csv">
         <i class="el-icon-upload"></i>
         <div class="el-upload__text">将企业文件拖到此处，或<em>点击上传</em></div>
         <div class="el-upload__tip" slot="tip">只能上传企业 csv 文件</div>
       </el-upload>
 
       <div class="upload-group">
-        <el-upload
-          class="upload-demo"
-          drag
-          action=""
-          :auto-upload="false"
-          :on-change="handleGateFileChange"
-          accept=".csv"
-        >
+        <el-upload class="upload-demo" drag action="" :auto-upload="false" :on-change="handleGateFileChange"
+          accept=".csv">
           <i class="el-icon-upload"></i>
           <div class="el-upload__text">将道闸文件拖到此处，或<em>点击上传</em></div>
           <div class="el-upload__tip" slot="tip">只能上传道闸 csv 文件</div>
         </el-upload>
 
-        <el-upload
-          class="upload-demo"
-          drag
-          action=""
-          :auto-upload="false"
-          :on-change="handleCameraFileChange"
-          accept=".csv"
-        >
+        <el-upload class="upload-demo" drag action="" :auto-upload="false" :on-change="handleCameraFileChange"
+          accept=".csv">
           <i class="el-icon-upload"></i>
           <div class="el-upload__text">将摄像头文件拖到此处，或<em>点击上传</em></div>
           <div class="el-upload__tip" slot="tip">只能上传摄像头 csv 文件</div>
@@ -47,7 +28,7 @@
       </div>
 
       <div v-if="enterprises.length" class="enterprise-list">
-        
+
         <el-table :data="enterprises" style="width: 100%; margin-top: 20px">
           <el-table-column type="expand">
             <template #default="{ row }">
@@ -76,9 +57,19 @@
                       <el-table-column prop="pushState" label="推送状态" />
                       <el-table-column prop="turnNo" label="转向编号" />
                     </el-table-column>
-                    
+
+                    <!-- 添加操作列 -->
+                    <el-table-column label="操作" width="120" fixed="right">
+                      <template #default="scope">
+                        <el-button type="primary" size="small" :loading="scope.row.loading"
+                          @click="handleSubmitGateCamera(scope.row, getRelatedCamera(scope.row))">
+                          提交设备
+                        </el-button>
+                      </template>
+                    </el-table-column>
                     <!-- 关联的摄像头信息 -->
                     <el-table-column label="关联摄像头信息" align="center">
+                      
                       <template #default="scope">
                         <template v-if="getRelatedCamera(scope.row)">
                           <el-table :data="[getRelatedCamera(scope.row)]" border>
@@ -111,19 +102,7 @@
                       </template>
                     </el-table-column>
 
-                    <!-- 添加操作列 -->
-                    <el-table-column label="操作" width="120" fixed="right">
-                      <template #default="scope">
-                        <el-button 
-                          type="primary" 
-                          size="small"
-                          :loading="scope.row.loading"
-                          @click="handleSubmitGateCamera(scope.row, getRelatedCamera(scope.row))"
-                        >
-                          提交设备
-                        </el-button>
-                      </template>
-                    </el-table-column>
+                    
                   </el-table>
                 </div>
               </div>
@@ -137,14 +116,8 @@
           </el-table-column>
           <el-table-column prop="expireDate" label="过期时间" width="250">
             <template #default="{ row }">
-              <el-date-picker
-                v-model="row.expireDate"
-                type="date"
-                placeholder="选择过期时间"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                :default-value="new Date()"
-              />
+              <el-date-picker v-model="row.expireDate" type="date" placeholder="选择过期时间" format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD" :default-value="new Date()" />
             </template>
           </el-table-column>
           <el-table-column prop="identifier" label="标识符" width="200" />
@@ -210,18 +183,13 @@
           </el-table-column>
           <el-table-column label="操作" width="120" fixed="right">
             <template #default="{ row }">
-              <el-button 
-                type="primary" 
-                size="small" 
-                :loading="row.loading"
-                :disabled="row.status === 'success'"
-                @click="handleSubmitSingle(row)"
-              >
+              <el-button type="primary" size="small" :loading="row.loading" :disabled="row.status === 'success'"
+                @click="handleSubmitSingle(row)">
                 提交
               </el-button>
             </template>
           </el-table-column>
-          
+
         </el-table>
 
         <div class="submit-section">
@@ -260,10 +228,10 @@ export default {
         // 补零，确保月份和日期是两位数
         const formattedMonth = month.padStart(2, '0');
         const formattedDay = day.padStart(2, '0');
-        
+
         // 如果有时间部分，保留时间；如果没有，使用 00:00:00
         const time = timePart || '00:00:00';
-        
+
         // 返回符合java.util.Date格式的字符串：yyyy-MM-dd'T'HH:mm:ss.SSSX
         const date = new Date(`${year}-${formattedMonth}-${formattedDay}T${time}.000Z`);
         return date.toISOString();
@@ -390,10 +358,10 @@ export default {
       }
 
       console.log('查找关联设备，企业ID:', companyId);
-      
+
       const relatedGates = this.gates.filter(gate => gate.companyId === companyId);
       const relatedCameras = this.cameras.filter(camera => camera.companyId === companyId);
-      
+
       console.log('找到的关联道闸:', relatedGates);
       console.log('找到的关联摄像头:', relatedCameras);
 
@@ -401,15 +369,15 @@ export default {
       const result = {
         gates: relatedGates.map(gate => ({
           ...gate,
-          relatedCamera: relatedCameras.find(camera => 
+          relatedCamera: relatedCameras.find(camera =>
             // 尝试多种匹配方式
-            camera.id === gate.videoId || 
+            camera.id === gate.videoId ||
             camera.videoSerial === gate.videoSerial ||
             (camera.way === gate.way && camera.companyId === gate.companyId)
           )
         }))
       };
-      
+
       this._relatedDevicesCache.set(companyId, result);
       return result;
     },
@@ -519,7 +487,7 @@ export default {
           maintenanceCompany: gate.managerCompany, // 管理公司
           maintenanceContact: gate.managerPerson,  // 管理人员
           maintenancePhone: gate.managerPhone,// 管理电话
-          company_id_: gate.companyId      
+          company_id_: gate.companyId
         }
 
         // TODO: 调用后端API
@@ -542,10 +510,12 @@ export default {
 .enterprise-list {
   margin-top: 20px;
 }
+
 .submit-section {
   margin-top: 20px;
   text-align: center;
 }
+
 .upload-group {
   display: flex;
   justify-content: space-around;
@@ -573,4 +543,4 @@ export default {
 :deep(.el-descriptions__content) {
   word-break: break-all;
 }
-</style> 
+</style>

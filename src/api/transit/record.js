@@ -95,3 +95,12 @@ export function listVio(query) {
     params: query
   })
 }
+
+// 补录货物信息
+export function supplementLedger(data) {
+  return request({
+    url: '/system/ledger/supplement',
+    method: 'post',
+    data: data
+  })
+}

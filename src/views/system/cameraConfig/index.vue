@@ -11,6 +11,14 @@
             @click="toggleAddNodes" />
         </el-tooltip>
       </div>
+      <!-- 权限提示 -->
+      <el-alert
+        v-if="showGroupAlert"
+        title="提示：企业组中的非主账号无法新增道闸"
+        type="info"
+        :closable="false"
+        class="permission-alert"
+      />
       <el-tree ref="treeRef" :data="treeData" :props="defaultProps" lazy :load="loadNode" @node-click="handleNodeClick"
         :filter-node-method="filterNode" class="custom-tree">
         <template #default="{ node, data }">
@@ -24,13 +32,23 @@
             <el-icon v-else-if="data.type === 'gate'" class="tree-icon gate-icon">
               <SetUp />
             </el-icon>
-            <el-icon v-else-if="data.type === 'add_screen' || data.type === 'add_camera' || data.type === 'add_gate'" class="tree-icon add-icon">
+            <el-icon v-else-if="data.type === 'add_screen' || data.type === 'add_camera' || data.type === 'add_gate' || data.type === 'add_gate_disabled'"
+              class="tree-icon add-icon">
               <Plus />
             </el-icon>
             <el-icon v-else-if="data.type === 'company'" class="tree-icon company-icon">
-              <el-icon><OfficeBuilding /></el-icon>
+              <el-icon>
+                <OfficeBuilding />
+              </el-icon>
             </el-icon>
             <span>{{ node.label }}</span>
+            <el-tag v-if="data.type === 'camera'" :type="data.connectionStatus ? 'success' : 'danger'"
+              class="connection-status-tag">
+              <el-icon>
+                <component :is="data.connectionStatus ? 'CircleCheck' : 'CircleClose'" />
+              </el-icon>
+              {{ data.connectionStatus ? '已连接' : '未连接' }}
+            </el-tag>
           </span>
         </template>
       </el-tree>
@@ -72,6 +90,34 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <!-- 只在非新增状态下显示连接状态 -->
+        <template v-if="!isAddingScreen">
+          <div class="section-title">连接状态</div>
+          <el-row :gutter="20">
+            <el-col :span="6">
+              <el-form-item label="连接状态">
+                <el-tag :type="screenConnectionStatus ? 'success' : 'danger'" class="connection-status-tag">
+                  <el-icon>
+                    <component :is="screenConnectionStatus ? 'CircleCheck' : 'CircleClose'" />
+                  </el-icon>
+                  {{ screenConnectionStatus ? '已连接' : '未连接' }}
+                </el-tag>
+                <el-button type="primary" size="small" @click="checkScreenConnectionStatus" :loading="checkingScreenConnection"
+                  class="ml-10">
+                  <el-icon class="mr-5">
+                    <Refresh />
+                  </el-icon>刷新状态
+                </el-button>
+              </el-form-item>
+            </el-col>
+            <el-col :span="18">
+              <el-form-item label="最后检查时间" v-if="lastScreenCheckedTime">
+                <span>{{ lastScreenCheckedTime }}</span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
 
         <div class="section-title">显示内容配置</div>
         <div class="display-content">
@@ -308,32 +354,9 @@
           <el-col :span="6">
             <el-form-item label="相机类型" prop="captureType">
               <el-select v-model="cameraForm.captureType" placeholder="请选择摄像头类型" clearable>
-                <el-option
-                  v-for="option in filteredOptions"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                />
+                <el-option v-for="option in filteredOptions" :key="option.value" :label="option.label"
+                  :value="option.value" />
               </el-select>
-            </el-form-item>
-          </el-col>
-          
-          <el-col :span="6">
-            <el-form-item label="车身相机序列号" prop="violationCamSn">
-              <el-input v-model="cameraForm.violationCamSn" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="车身相机品牌" prop="screenBrand">
-              <el-select v-model="cameraForm.screenBrand">
-                <el-option v-for="dict in camera_brand" :key="dict.value" :label="dict.label" :value="dict.value" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6"></el-col>
-          <el-col :span="6">
-            <el-form-item label="主屏" prop="screenSn">
-              <el-input v-model="cameraForm.screenSn" />
             </el-form-item>
           </el-col>
           <el-col :span="6">
@@ -343,7 +366,103 @@
               </el-select>
             </el-form-item>
           </el-col>
+          <!-- <el-col :span="6">
+            <el-form-item label="主屏" prop="screenSn">
+              <el-input v-model="cameraForm.screenSn" />
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="6">
+            <el-form-item label="无补录信息开闸" prop="needSupplement">
+              <div class="select-with-tooltip" >
+                <el-select v-model="cameraForm.needSupplement" clearable>
+                  <el-option v-for="option in needSupplementOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+                <el-tooltip
+                  effect="dark"
+                  placement="top"
+                  :content="'选择是时，车辆无补录信息且出场时未补录货物信息，通行记录按照自动抬杆处理不会出现人工抬杆<br>选择否时，车辆无补录信息且出场时未补录货物信息，通行记录按照人工抬杆处理,出场方式会出现人工抬杆'"
+                  raw-content
+                >
+                  <el-icon class="help-icon"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="加密配置" v-if="isAdmin">
+              <div class="encrypt-buttons">
+                <el-button type="warning" @click="handleGetEncryptConfig">
+                  主相机配置
+                  <el-icon>
+                    <Key />
+                  </el-icon>
+                </el-button>
+                <el-button type="warning" @click="handleGetViolationCamEncryptConfig" v-if="cameraForm.snapStrategy === 1">
+                  车身相机配置
+                  <el-icon>
+                    <Key />
+                  </el-icon>
+                </el-button>
+              </div>
+            </el-form-item>
+          </el-col>
         </el-row>
+
+        <div class="section-title">车身照片抓拍策略配置</div>
+        <el-row :gutter="20">
+          <el-col :span="6">
+            <el-form-item label="抓拍策略" prop="snapStrategy">
+              <el-select v-model="cameraForm.snapStrategy" placeholder="请选择抓拍策略">
+                <el-option label="车牌识别相机抓拍" :value="1" />
+                <el-option label="国标平台抓拍" :value="2" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <div class="strategy-config-container">
+          <!-- 车牌识别相机抓拍配置 -->
+          <template v-if="cameraForm.snapStrategy === 1">
+            <div class="strategy-subtitle">
+              <el-icon class="strategy-icon"><VideoCamera /></el-icon>
+              <span>车牌识别相机配置</span>
+            </div>
+            <el-row :gutter="20">
+              <el-col :span="6">
+                <el-form-item label="车身相机序列号" prop="violationCamSn">
+                  <el-input v-model="cameraForm.violationCamSn" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="车身相机品牌" prop="screenBrand">
+                  <el-select v-model="cameraForm.screenBrand">
+                    <el-option v-for="dict in camera_brand" :key="dict.value" :label="dict.label" :value="dict.value" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+
+          <!-- 国标平台抓拍配置 -->
+          <template v-if="cameraForm.snapStrategy === 2">
+            <div class="strategy-subtitle">
+              <el-icon class="strategy-icon"><Monitor /></el-icon>
+              <span>国标平台配置</span>
+            </div>
+            <el-row :gutter="20">
+              <el-col :span="6">
+                <el-form-item label="国标设备编号" prop="deviceId">
+                  <el-input v-model="cameraForm.deviceId" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="国标通道编号" prop="channelId">
+                  <el-input v-model="cameraForm.channelId" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+        </div>
 
         <div class="section-title">硬盘录像机配置</div>
         <el-row :gutter="0">
@@ -373,17 +492,6 @@
           <el-col :span="6">
             <el-form-item label="相机密码" prop="password">
               <el-input v-model="cameraForm.password" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12"></el-col>
-          <el-col :span="6">
-            <el-form-item label="国标设备编号" prop="deviceId">
-              <el-input v-model="cameraForm.deviceId" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="国标通道编号" prop="channelId">
-              <el-input v-model="cameraForm.channelId" />
             </el-form-item>
           </el-col>
           <el-col :span="6">
@@ -437,6 +545,58 @@
             </el-col>
           </el-row>
 
+          <div class="section-title">连接状态</div>
+          <el-row :gutter="20">
+            <el-col :span="6">
+              <el-form-item label="连接状态">
+                <div class="status-row">
+                  <el-tag :type="cameraConnectionStatus ? 'success' : 'danger'" class="connection-status-tag">
+                    <el-icon>
+                      <component :is="cameraConnectionStatus ? 'CircleCheck' : 'CircleClose'" />
+                    </el-icon>
+                    主相机{{ cameraConnectionStatus ? '已连接' : '未连接' }}
+                  </el-tag>
+                  <el-button type="primary" size="small" @click="checkConnectionStatus" :loading="checkingConnection">
+                    <el-icon class="mr-5">
+                      <Refresh />
+                    </el-icon>刷新状态
+                  </el-button>
+                </div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="18">
+              <el-form-item label="最后检查时间" v-if="lastCheckedTime">
+                <span>{{ lastCheckedTime }}</span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <!-- 车身相机连接状态 -->
+          <el-row :gutter="20" v-if="cameraForm.snapStrategy === 1">
+            <el-col :span="6">
+              <el-form-item label="车身相机状态">
+                <div class="status-row">
+                  <el-tag :type="violationCamConnectionStatus ? 'success' : 'danger'" class="connection-status-tag">
+                    <el-icon>
+                      <component :is="violationCamConnectionStatus ? 'CircleCheck' : 'CircleClose'" />
+                    </el-icon>
+                    车身相机{{ violationCamConnectionStatus ? '已连接' : '未连接' }}
+                  </el-tag>
+                  <el-button type="primary" size="small" @click="checkViolationCamConnectionStatus" :loading="checkingViolationCamConnection">
+                    <el-icon class="mr-5">
+                      <Refresh />
+                    </el-icon>刷新状态
+                  </el-button>
+                </div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="18">
+              <el-form-item label="最后检查时间" v-if="lastViolationCamCheckedTime">
+                <span>{{ lastViolationCamCheckedTime }}</span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
           <div class="section-title">认证信息</div>
           <el-row :gutter="20">
             <el-col :span="54">
@@ -461,7 +621,8 @@
           <div class="save-btn-container">
             <el-button type="success" @click="handleAdd" :disabled="!(isAddingCamera || isAddingGate)">保存新增</el-button>
             <el-button type="primary" @click="handleUpdate" :disabled="isAddingCamera || isAddingGate">保存修改</el-button>
-            <el-button type="primary" @click="handleAuthCamera" :disabled="isAddingCamera || isAddingGate">提交认证</el-button>
+            <el-button type="primary" @click="handleAuthCamera"
+              :disabled="isAddingCamera || isAddingGate">提交认证</el-button>
           </div>
         </el-form-item>
       </el-form>
@@ -570,19 +731,45 @@
 
       </el-form>
     </div>
+    <!-- 加密配置弹窗 -->
+    <el-dialog v-model="encryptDialogVisible" :title="isAddEncrypt ? '新增加密配置' : '修改加密配置'" width="30%"
+      :close-on-click-modal="false">
+      <el-form :model="encryptForm" :rules="encryptRules" ref="encryptFormRef" label-width="100px">
+        <el-form-item label="设备序列号">
+          <el-input v-model="encryptForm.sn" disabled />
+        </el-form-item>
+        <el-form-item label="老密码" prop="oldPassword">
+          <el-input v-model="encryptForm.oldPassword" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="encryptForm.newPassword" />
+        </el-form-item>
+        <el-form-item label="是否加密" prop="isEncrypt">
+          <el-switch v-model="encryptForm.isEncrypt" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="encryptDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSaveEncryptConfig">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
-import { VideoCamera, Monitor, SetUp, Refresh, Delete, Plus, Rank, Search, QuestionFilled, OfficeBuilding } from '@element-plus/icons-vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { VideoCamera, Monitor, SetUp, Refresh, Delete, Plus, Rank, Search, QuestionFilled, OfficeBuilding, Key, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { selectIds } from "@/api/system/info";
 import { getGateList, getDeviceList, getGateInfo, saveScreen, updateScreen } from '@/api/system/device'
-import { addCamera, updateCamera, authCamera } from '@/api/system/camera'
+import { addCamera, updateCamera, authCamera, getEncryptConfig, saveEncryptConfig, checkCameraConnectionStatus } from '@/api/system/camera'
 import { addGate, updateGate, authGate } from '@/api/system/gate'
-import { ElMessage } from 'element-plus'
+import { checkCompanyInGroup } from "@/api/system/group";
+import { ElMessage, ElNotification } from 'element-plus'
 import draggable from 'vuedraggable'
 import { cloneDeep, isEqual } from 'lodash-es'
+import useUserStore from '@/store/modules/user'
 const { proxy } = getCurrentInstance();
 const { screen_brand, entrance_no, camera_brand, cam_type, tunnel_type, font_index, findex, nvr_channels } = proxy.useDict('screen_brand', 'entrance_no', 'camera_brand', 'cam_type', 'tunnel_type', 'font_index', 'findex', 'nvr_channels');
 
@@ -622,8 +809,9 @@ const cameraForm = reactive({
   captureType: '',   // 相机类型
   gateType: '',      // 道闸类型
   violationCamSn: '', // 车身相机序列号
-  screenBrand: '', // 车身相机序列号
+  screenBrand: '', // 车身相机品牌
   screenSn: '', // 主屏序列号
+  snapStrategy: 1, // 抓拍策略：1为车牌识别相机抓拍，2为国标平台抓拍
 
   // 网络配置
   ip: '',           // IP地址
@@ -650,6 +838,7 @@ const cameraForm = reactive({
   message: '',      // 认证信息
   userId: null,    // 用户ID
   deptId: null,    // 部门ID
+  needSupplement: '', // 无补录信息开闸
 })
 
 // 道闸配置表单数据
@@ -700,6 +889,12 @@ const toggleAddNodes = () => {
 
 // 处理树节点点击
 const handleNodeClick = async (data, node) => {
+  // 如果点击的是禁用的新增道闸节点，显示提示信息
+  if (data.type === 'add_gate_disabled') {
+    ElMessage.warning('您的企业不是企业组主账号，无法新增道闸');
+    return;
+  }
+
   currentNode.value = node
 
   if (data.type === 'screen') {
@@ -724,6 +919,8 @@ const handleNodeClick = async (data, node) => {
     Object.assign(formData, processedData)
     // 保存原始数据副本
     originalFormData.value = cloneDeep(formData)
+    // 检查屏幕连接状态
+    checkScreenConnectionStatus()
     return
   }
 
@@ -782,6 +979,12 @@ const handleNodeClick = async (data, node) => {
     isAddingCamera.value = false
     Object.assign(cameraForm, data.deviceData)
     originalCameraForm.value = cloneDeep(cameraForm)
+    // 检查相机连接状态
+    checkConnectionStatus()
+    // 如果是车牌识别相机抓拍模式，检查车身相机状态
+    if (cameraForm.snapStrategy === 1) {
+      checkViolationCamConnectionStatus()
+    }
   }
 }
 
@@ -831,13 +1034,15 @@ const handleUpdate = async () => {
       violationCamSn: cameraForm.violationCamSn,
       screenBrand: cameraForm.screenBrand,
       screenSn: cameraForm.screenSn,
+      snapStrategy: cameraForm.snapStrategy,
       username: cameraForm.username,
       password: cameraForm.password,
       channels: cameraForm.channels,
       deviceId: cameraForm.deviceId,
       channelId: cameraForm.channelId,
       localChannelId: cameraForm.localChannelId,
-      gateId: cameraForm.gateId
+      gateId: cameraForm.gateId,
+      needSupplement: cameraForm.needSupplement
     }
     try {
       await updateCamera(saveData)
@@ -903,13 +1108,15 @@ const handleAdd = async () => {
         violationCamSn: cameraForm.violationCamSn,
         screenBrand: cameraForm.screenBrand,
         screenSn: cameraForm.screenSn,
+        snapStrategy: cameraForm.snapStrategy,
         username: cameraForm.username,
         password: cameraForm.password,
         channels: cameraForm.channels,
         deviceId: cameraForm.deviceId,
         channelId: cameraForm.channelId,
         localChannelId: cameraForm.localChannelId,
-        gateId: cameraForm.gateId
+        gateId: cameraForm.gateId,
+        needSupplement: cameraForm.needSupplement
       }
       try {
         await addCamera(saveData)
@@ -953,6 +1160,9 @@ const loadNode = async (node, resolve) => {
   const { data } = node
   try {
     if (data.type === 'company') {
+      // 检查企业是否在企业组中，并且是否为主账号
+      await checkCompanyGroupStatus(data.id);
+      
       const response = await getGateList(data.id)
       const gates = response.rows || response.data || []
       const gateNodes = gates.map(gate => ({
@@ -966,14 +1176,28 @@ const loadNode = async (node, resolve) => {
 
       // 只在非隐藏状态下添加新增节点，并放在最后
       if (!hideAddNodes.value) {
-        gateNodes.push({
-          id: 'add_gate',
-          label: '新增道闸',
-          type: 'add_gate',
-          isLeaf: true,
-          parentId: data.id,
-          icon: Plus
-        })
+        // 如果不在企业组中，或者在企业组中且是主账号，可以正常新增
+        if (!isInGroup.value || (isInGroup.value && isMainAccount.value)) {
+          gateNodes.push({
+            id: 'add_gate',
+            label: '新增道闸',
+            type: 'add_gate',
+            isLeaf: true,
+            parentId: data.id,
+            icon: Plus
+          });
+        } else {
+          // 在企业组中但不是主账号，添加禁用节点
+          gateNodes.push({
+            id: 'add_gate_disabled',
+            label: '新增道闸(非主账号)',
+            type: 'add_gate_disabled',
+            isLeaf: true,
+            parentId: data.id,
+            icon: Plus,
+            disabled: true
+          });
+        }
       }
 
       resolve(gateNodes)
@@ -1197,57 +1421,77 @@ const screenRules = {
   }]
 }
 
-const cameraRules = {
-  cameraName: [{ required: true, message: '请输入相机名称', trigger: 'blur' }],
-  cameraBrand: [{ required: true, message: '请选择相机品牌', trigger: 'change' }],
-  cameraSn: [{ required: true, message: '请输入序列号', trigger: 'blur' }],
-  captureType: [{ required: true, message: '请选择相机类型', trigger: 'change' }],
-  gateType: [{ required: true, message: '请选择道闸类型', trigger: 'change' }],
-  violationCamSn: [{ required: true, message: '请输入车身相机序列号', trigger: 'blur' }],
-  screenBrand: [{ required: true, message: '请选择车身相机品牌', trigger: 'change' }],
-  longitude: [{ required: true, message: '请输入相机经度', trigger: 'blur' },
-  {
-    validator: (rule, value, callback) => {
-      if (!value || isNaN(value) || value < -180 || value > 180) {
-        callback(new Error('道闸经度必须在-180到180之间'));
-      } else {
-        callback();
-      }
-    }, trigger: 'blur'
+const cameraRules = computed(() => {
+  const baseRules = {
+    cameraName: [{ required: true, message: '请输入相机名称', trigger: 'blur' }],
+    cameraBrand: [{ required: true, message: '请选择相机品牌', trigger: 'change' }],
+    cameraSn: [{ required: true, message: '请输入序列号', trigger: 'blur' }],
+    captureType: [{ required: true, message: '请选择相机类型', trigger: 'change' }],
+    gateType: [{ required: true, message: '请选择道闸类型', trigger: 'change' }],
+    snapStrategy: [{ required: true, message: '请选择抓拍策略', trigger: 'change' }],
+    needSupplement: [{ required: true, message: '请选择无补录信息开闸', trigger: 'change' }],
+    longitude: [{ required: true, message: '请输入相机经度', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (!value || isNaN(value) || value < -180 || value > 180) {
+          callback(new Error('道闸经度必须在-180到180之间'));
+        } else {
+          callback();
+        }
+      }, trigger: 'blur'
+    }
+    ],
+    latitude: [{ required: true, message: '请输入相机纬度', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (!value || isNaN(value) || value < -90 || value > 90) {
+          callback(new Error('道闸纬度必须在-90到90之间'));
+        } else {
+          callback();
+        }
+      }, trigger: 'blur'
+    }
+    ],
+    ip: [{ required: true, message: '请输入IP地址', trigger: 'blur' },
+    { pattern: /^(?:\d{1,3}\.){3}\d{1,3}$/, message: '请输入合法的IP地址', trigger: 'blur' }
+    ],
+    port: [{ required: true, message: '请输入端口', trigger: 'blur' }],
+    username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+    password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+    channels: [{ required: true, message: '请输入通道号', trigger: 'blur' }],
+    entranceNo: [{ required: true, message: '请选择出入口编号', trigger: 'change' }],
+    turnNo: [{ required: true, message: '请输入道闸编号', trigger: 'blur' },
+    { pattern: /^\d{2}$/, message: '道闸编号必须是两位数字', trigger: 'blur' }
+    ],
+    localChannelId: [
+      { required: true, message: "nvr⾃⽤编号不能为空", trigger: "blur" }
+    ]
+  };
+
+  // 根据抓拍策略添加不同的验证规则
+  if (cameraForm.snapStrategy === 1) {
+    baseRules.violationCamSn = [{ required: true, message: '请输入车身相机序列号', trigger: 'blur' }];
+    baseRules.screenBrand = [{ required: true, message: '请选择车身相机品牌', trigger: 'change' }];
+  } else if (cameraForm.snapStrategy === 2) {
+    baseRules.deviceId = [{ required: true, message: "国标编号不能为空", trigger: "blur" }];
+    baseRules.channelId = [{ required: true, message: "国标通道编号不能为空", trigger: "blur" }];
   }
-  ],
-  latitude: [{ required: true, message: '请输入相机纬度', trigger: 'blur' },
-  {
-    validator: (rule, value, callback) => {
-      if (!value || isNaN(value) || value < -90 || value > 90) {
-        callback(new Error('道闸纬度必须在-90到90之间'));
-      } else {
-        callback();
-      }
-    }, trigger: 'blur'
-  }
-  ],
-  ip: [{ required: true, message: '请输入IP地址', trigger: 'blur' },
-  { pattern: /^(?:\d{1,3}\.){3}\d{1,3}$/, message: '请输入合法的IP地址', trigger: 'blur' }
-  ],
-  port: [{ required: true, message: '请输入端口', trigger: 'blur' }],
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  channels: [{ required: true, message: '请输入通道号', trigger: 'blur' }],
-  entranceNo: [{ required: true, message: '请选择出入口编号', trigger: 'change' }],
-  turnNo: [{ required: true, message: '请输入道闸编号', trigger: 'blur' },
-  { pattern: /^\d{2}$/, message: '道闸编号必须是两位数字', trigger: 'blur' }
-  ],
-  deviceId: [
-    { required: true, message: "国标编号不能为空", trigger: "blur" }
-  ],
-  channelId: [
-    { required: true, message: "国标通道编号不能为空", trigger: "blur" }
-  ],
-  localChannelId: [
-    { required: true, message: "nvr⾃⽤编号不能为空", trigger: "blur" }
-  ],
-}
+
+  return baseRules;
+});
+
+// // 监听抓拍策略变化
+// watch(() => cameraForm.snapStrategy, (newValue) => {
+//   if (newValue === 1) {
+//     // 车牌识别相机抓拍时，清空国标相关字段
+//     cameraForm.deviceId = '';
+//     cameraForm.channelId = '';
+//   } else if (newValue === 2) {
+//     // 国标平台抓拍时，清空车身相机相关字段
+//     cameraForm.violationCamSn = '';
+//     cameraForm.screenBrand = '';
+//   }
+// });
 
 const gateRules = {
   turnName: [{ required: true, message: '请输入道闸名称', trigger: 'blur' }],
@@ -1359,7 +1603,7 @@ const filteredOptions = computed(() => {
   if (!selectedCamType.value) {
     return [...camOptionsGroups.normal, ...camOptionsGroups.single];
   }
-  
+
   const type = Number(selectedCamType.value);
   return type <= 4 ? camOptionsGroups.normal : camOptionsGroups.single;
 });
@@ -1384,6 +1628,7 @@ const handleAuthCamera = async () => {
       violationCamSn: cameraForm.violationCamSn,
       screenBrand: cameraForm.screenBrand,
       screenSn: cameraForm.screenSn,
+      snapStrategy: cameraForm.snapStrategy,
       username: cameraForm.username,
       password: cameraForm.password,
       channels: cameraForm.channels,
@@ -1422,6 +1667,335 @@ const handleAuthGate = async () => {
   }
 }
 
+// 修改管理员权限判断
+const userStore = useUserStore()
+const isAdmin = computed(() => {
+  return userStore.roles.includes('admin')
+})
+
+// 加密配置相关
+const encryptDialogVisible = ref(false)
+const encryptConfig = ref(null)
+const isAddEncrypt = ref(false)
+const encryptFormRef = ref(null)
+
+const encryptForm = reactive({
+  sn: '',
+  oldPassword: '',
+  newPassword: '',
+  isEncrypt: 1
+})
+
+const encryptRules = {
+  oldPassword: [
+    { required: true, message: '请输入老密码', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' }
+  ]
+}
+
+// 获取加密配置
+const handleGetEncryptConfig = async () => {
+  try {
+    const res = await getEncryptConfig(cameraForm.cameraSn)
+    if (res.code === 200) {
+      if (res.data) {
+        // 如果成功获取配置，显示修改弹窗
+        encryptConfig.value = res.data
+        isAddEncrypt.value = false
+        encryptForm.sn = cameraForm.cameraSn
+        encryptForm.oldPassword = encryptConfig.value.key
+        encryptForm.newPassword = ''
+        encryptDialogVisible.value = true
+      } else {
+        // 如果未找到配置，显示新增弹窗
+        isAddEncrypt.value = true
+        encryptForm.sn = cameraForm.cameraSn
+        encryptForm.oldPassword = ''
+        encryptForm.newPassword = ''
+        encryptDialogVisible.value = true
+      }
+    } else {
+      ElMessage.error(res.msg || '获取加密配置失败')
+    }
+  } catch (error) {
+    console.error('获取加密配置失败:', error)
+    ElMessage.error('获取加密配置失败')
+  }
+}
+
+// 保存加密配置
+const handleSaveEncryptConfig = async () => {
+  try {
+    await encryptFormRef.value.validate()
+    const data = {
+      sn: encryptForm.sn,
+      oldPassword: isAddEncrypt.value ? encryptForm.oldPassword : encryptConfig.value.key,
+      newPassword: encryptForm.newPassword,
+      isEncrypt: encryptForm.isEncrypt
+    }
+
+    const res = await saveEncryptConfig(data)
+    if (res.code === 200) {
+      ElMessage.success(res.msg)
+      encryptDialogVisible.value = false
+    } else {
+      ElMessage.error(res.msg)
+    }
+  } catch (error) {
+    console.error('保存加密配置失败:', error)
+    ElMessage.error('保存加密配置失败')
+  }
+}
+
+const cameraConnectionStatus = ref(false)
+const checkingConnection = ref(false)
+const lastCheckedTime = ref('')
+
+const checkConnectionStatus = async () => {
+  if (!cameraForm.cameraSn) return
+
+  checkingConnection.value = true
+  try {
+    const res = await checkCameraConnectionStatus(cameraForm.cameraSn)
+    if (res.code === 200) {
+      // 检查是否返回了连接状态
+      if (res.data && res.data.connected !== undefined) {
+        cameraConnectionStatus.value = res.data.connected
+        lastCheckedTime.value = new Date().toLocaleString()
+      } else if (res.data && res.data.code === 'CLIENTID_NOT_FOUND') {
+        cameraConnectionStatus.value = false
+        ElNotification({
+          title: '提示',
+          message: `设备未连接: ${res.data.message || '客户端不存在'}`,
+          type: 'warning',
+          duration: 3000
+        })
+      } else {
+        cameraConnectionStatus.value = false
+        ElNotification({
+          title: '提示',
+          message: res.msg || '设备未连接或状态获取失败',
+          type: 'warning',
+          duration: 3000
+        })
+      }
+    } else {
+      cameraConnectionStatus.value = false
+      ElNotification({
+        title: '提示',
+        message: res.msg || '获取连接状态失败',
+        type: 'warning',
+        duration: 3000
+      })
+    }
+  } catch (error) {
+    console.error('检查连接状态失败:', error)
+    cameraConnectionStatus.value = false
+    ElNotification({
+      title: '提示',
+      message: '获取连接状态失败',
+      type: 'warning',
+      duration: 3000
+    })
+  } finally {
+    checkingConnection.value = false
+  }
+}
+
+// 企业组状态相关
+const companyGroupInfo = ref(null);
+const isInGroup = ref(false);
+const isMainAccount = ref(false);
+const checkingGroup = ref(false);
+
+// 是否显示企业组权限提示
+const showGroupAlert = computed(() => {
+  return isInGroup.value && !isMainAccount.value;
+});
+
+// 检查企业是否在企业组中及是否为主账号
+const checkCompanyGroupStatus = async (companyId) => {
+  if (!companyId) return;
+  
+  checkingGroup.value = true;
+  try {
+    const res = await checkCompanyInGroup(companyId);
+    if (res.code === 200 && res.data) {
+      companyGroupInfo.value = res.data;
+      isInGroup.value = true;
+      isMainAccount.value = res.data.mainAccount === 1 || res.data.mainAccount === '1';
+    } else {
+      companyGroupInfo.value = null;
+      isInGroup.value = false;
+      isMainAccount.value = false;
+    }
+  } catch (error) {
+    console.error('检查企业组状态失败:', error);
+    companyGroupInfo.value = null;
+    isInGroup.value = false;
+    isMainAccount.value = false;
+  } finally {
+    checkingGroup.value = false;
+  }
+};
+
+// 无补录信息开闸选项
+const needSupplementOptions = [
+  { label: '是', value: 1 },
+  { label: '否', value: 2 }
+]
+
+const screenConnectionStatus = ref(false)
+const checkingScreenConnection = ref(false)
+const lastScreenCheckedTime = ref('')
+
+const checkScreenConnectionStatus = async () => {
+  if (!formData.ledSn) return
+
+  checkingScreenConnection.value = true
+  try {
+    const res = await checkCameraConnectionStatus(formData.ledSn)
+    if (res.code === 200) {
+      // 检查是否返回了连接状态
+      if (res.data && res.data.connected !== undefined) {
+        screenConnectionStatus.value = res.data.connected
+        lastScreenCheckedTime.value = new Date().toLocaleString()
+      } else if (res.data && res.data.code === 'CLIENTID_NOT_FOUND') {
+        screenConnectionStatus.value = false
+        ElNotification({
+          title: '提示',
+          message: `设备未连接: ${res.data.message || '客户端不存在'}`,
+          type: 'warning',
+          duration: 3000
+        })
+      } else {
+        screenConnectionStatus.value = false
+        ElNotification({
+          title: '提示',
+          message: res.msg || '设备未连接或状态获取失败',
+          type: 'warning',
+          duration: 3000
+        })
+      }
+    } else {
+      screenConnectionStatus.value = false
+      ElNotification({
+        title: '提示',
+        message: res.msg || '获取连接状态失败',
+        type: 'warning',
+        duration: 3000
+      })
+    }
+  } catch (error) {
+    console.error('检查连接状态失败:', error)
+    screenConnectionStatus.value = false
+    ElNotification({
+      title: '提示',
+      message: '获取连接状态失败',
+      type: 'warning',
+      duration: 3000
+    })
+  } finally {
+    checkingScreenConnection.value = false
+  }
+}
+
+// 在 script setup 部分添加新的处理函数
+const handleGetViolationCamEncryptConfig = async () => {
+  if (!cameraForm.violationCamSn) {
+    ElMessage.warning('请先填写车身相机序列号')
+    return
+  }
+
+  try {
+    const res = await getEncryptConfig(cameraForm.violationCamSn)
+    if (res.code === 200) {
+      if (res.data) {
+        // 如果成功获取配置，显示修改弹窗
+        encryptConfig.value = res.data
+        isAddEncrypt.value = false
+        encryptForm.sn = cameraForm.violationCamSn
+        encryptForm.oldPassword = encryptConfig.value.key
+        encryptForm.newPassword = ''
+        encryptDialogVisible.value = true
+      } else {
+        // 如果未找到配置，显示新增弹窗
+        isAddEncrypt.value = true
+        encryptForm.sn = cameraForm.violationCamSn
+        encryptForm.oldPassword = ''
+        encryptForm.newPassword = ''
+        encryptDialogVisible.value = true
+      }
+    } else {
+      ElMessage.error(res.msg || '获取加密配置失败')
+    }
+  } catch (error) {
+    console.error('获取加密配置失败:', error)
+    ElMessage.error('获取加密配置失败')
+  }
+}
+
+// 在 script setup 部分添加新的状态变量和处理函数
+const violationCamConnectionStatus = ref(false)
+const checkingViolationCamConnection = ref(false)
+const lastViolationCamCheckedTime = ref('')
+
+const checkViolationCamConnectionStatus = async () => {
+  if (!cameraForm.violationCamSn) {
+    ElMessage.warning('请先填写车身相机序列号')
+    return
+  }
+
+  checkingViolationCamConnection.value = true
+  try {
+    const res = await checkCameraConnectionStatus(cameraForm.violationCamSn)
+    if (res.code === 200) {
+      // 检查是否返回了连接状态
+      if (res.data && res.data.connected !== undefined) {
+        violationCamConnectionStatus.value = res.data.connected
+        lastViolationCamCheckedTime.value = new Date().toLocaleString()
+      } else if (res.data && res.data.code === 'CLIENTID_NOT_FOUND') {
+        violationCamConnectionStatus.value = false
+        ElNotification({
+          title: '提示',
+          message: `设备未连接: ${res.data.message || '客户端不存在'}`,
+          type: 'warning',
+          duration: 3000
+        })
+      } else {
+        violationCamConnectionStatus.value = false
+        ElNotification({
+          title: '提示',
+          message: res.msg || '设备未连接或状态获取失败',
+          type: 'warning',
+          duration: 3000
+        })
+      }
+    } else {
+      violationCamConnectionStatus.value = false
+      ElNotification({
+        title: '提示',
+        message: res.msg || '获取连接状态失败',
+        type: 'warning',
+        duration: 3000
+      })
+    }
+  } catch (error) {
+    console.error('检查连接状态失败:', error)
+    violationCamConnectionStatus.value = false
+    ElNotification({
+      title: '提示',
+      message: '获取连接状态失败',
+      type: 'warning',
+      duration: 3000
+    })
+  } finally {
+    checkingViolationCamConnection.value = false
+  }
+}
+
 </script>
 
 <style scoped>
@@ -1429,8 +2003,10 @@ const handleAuthGate = async () => {
   display: flex;
   gap: 20px;
   padding: 20px;
-  height: calc(100vh - 40px); /* 减去padding的高度 */
-  overflow: hidden; /* 防止整体出现滚动条 */
+  height: calc(100vh - 40px);
+  /* 减去padding的高度 */
+  overflow: hidden;
+  /* 防止整体出现滚动条 */
 }
 
 .tree-container {
@@ -1446,19 +2022,28 @@ const handleAuthGate = async () => {
   gap: 10px;
   padding: 10px;
   align-items: center;
-  flex-shrink: 0; /* 防止header被压缩 */
+  flex-shrink: 0;
+  /* 防止header被压缩 */
+}
+
+.permission-alert {
+  margin: 0 5px 5px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .custom-tree {
   flex: 1;
-  overflow-y: auto; /* 添加垂直滚动条 */
+  overflow-y: auto;
+  /* 添加垂直滚动条 */
   padding: 10px;
 }
 
 .config-form {
   flex: 1;
   padding-bottom: 80px;
-  overflow-y: auto; /* 添加垂直滚动条 */
+  overflow-y: auto;
+  /* 添加垂直滚动条 */
   height: 100%;
 }
 
@@ -1482,6 +2067,45 @@ const handleAuthGate = async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  font-weight: bold;
+  margin: 10px 0 15px;
+  padding-left: 12px;
+  color: #606266;
+  border-left: 3px solid #409EFF;
+}
+
+.strategy-config-container {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.strategy-subtitle {
+  font-size: 14px;
+  font-weight: bold;
+  margin: 0 0 20px;
+  padding-bottom: 10px;
+  color: #409EFF;
+  border-bottom: 1px dashed #d4e5ff;
+  display: flex;
+  align-items: center;
+}
+
+.strategy-icon {
+  margin-right: 8px;
+  background-color: #ecf5ff;
+  color: #409EFF;
+  padding: 6px;
+  border-radius: 50%;
+  font-size: 16px;
 }
 
 .display-content {
@@ -1882,6 +2506,17 @@ const handleAuthGate = async () => {
   color: #409EFF;
 }
 
+/* 禁用节点样式 */
+.add_gate_disabled {
+  color: #C0C4CC !important;
+  font-weight: normal !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.add_gate_disabled .add-icon {
+  color: #C0C4CC;
+}
+
 /* 鼠标悬停效果 */
 .custom-tree-node:hover {
   background-color: #f5f7fa;
@@ -1905,5 +2540,52 @@ const handleAuthGate = async () => {
 /* 缩进控制 */
 :deep(.el-tree-node__children) {
   padding-left: 20px;
+}
+
+.connection-status-tag {
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.connection-status-tag .el-icon {
+  margin-right: 5px;
+}
+
+.ml-10 {
+  margin-left: 10px;
+}
+
+.select-with-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.select-with-tooltip .el-select {
+  width: 100%;
+}
+
+.help-icon {
+  color: #909399;
+  cursor: help;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.help-icon:hover {
+  color: #409EFF;
+}
+
+.encrypt-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 </style>

@@ -139,6 +139,16 @@
       </el-table-column>
       <el-table-column label="车辆所属人" align="center" prop="ownerName" width="100" />
       <el-table-column label="来访事由" align="center" prop="inReason" width="100" />
+      <el-table-column label="创建时间" align="center" prop="createDate" width="100">
+        <template #default="scope">
+          {{ formatDateTime(scope.row.createDate) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="更新时间" align="center" prop="updateDate" width="100">
+        <template #default="scope">
+          {{ formatDateTime(scope.row.updateDate) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" fixed="right">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)"
@@ -971,6 +981,18 @@ const showErrorNotification = (plateNumber, error) => {
     position: 'bottom-right',
     duration: 3000
   });
+};
+
+// 在 script setup 部分添加格式化函数
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return '';
+  const date = new Date(dateTimeStr);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
 getEnterpriseList();

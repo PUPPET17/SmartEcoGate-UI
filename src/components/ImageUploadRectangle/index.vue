@@ -3,7 +3,7 @@
       <el-upload multiple :action="uploadImgUrl" list-type="picture-card" :on-success="handleUploadSuccess"
         :before-upload="handleBeforeUpload" :limit="1" :on-error="handleUploadError" :on-exceed="handleExceed"
         ref="imageUpload" :before-remove="handleDelete" :show-file-list="true" :headers="headers" :file-list="fileList"
-        :on-preview="handlePictureCardPreview" :class="{ hide: fileList.length >= 1 }" :accept="accept" capture="environment">
+        :on-preview="handlePictureCardPreview" :class="{ hide: fileList.length >= 1 }" :accept="accept">
         <el-icon class="avatar-uploader-icon">
           <plus />
         </el-icon>
@@ -28,7 +28,7 @@
     // 大小限制(MB)
     fileSize: {
       type: Number,
-      default: 5,
+      default: 50,
     },
     // 文件类型, 例如['png', 'jpg', 'jpeg']
     fileType: {

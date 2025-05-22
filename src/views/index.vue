@@ -1,153 +1,162 @@
 <template>
-  <el-row :gutter="10">
-    <el-col :xs="24" :sm="24" :md="6" class="card-box">
-      <el-card class="custom-card">
-        <template #header>
-          <span>接入流程</span>
-        </template>
-        <VueFlow :nodes="nodes" :edges="edges" class="flow-chart">
-          <Background pattern-color="#aaa" :gap="14" variant="dots" />
-          <MiniMap class="hide-on-mobile" />
-        </VueFlow>
-      </el-card>
-    </el-col>
+  <div class="app-container">
+    <el-row :gutter="10">
+      <el-col :xs="24" :sm="24" :md="6" class="card-box">
+        <el-card class="custom-card">
+          <template #header>
+            <span>接入流程</span>
+          </template>
+          <VueFlow :nodes="nodes" :edges="edges" class="flow-chart">
+            <Background pattern-color="#aaa" :gap="14" variant="dots" />
+            <MiniMap class="hide-on-mobile" />
+          </VueFlow>
+        </el-card>
+      </el-col>
 
-    <el-col :xs="24" :sm="24" :md="9" class="card-box">
-      <el-card class="custom-card">
-        <template #header>
-          <span>离线日志</span>
-        </template>
-        <OfflineLog />
-      </el-card>
-    </el-col>
+      <el-col :xs="24" :sm="24" :md="9" class="card-box">
+        <el-card class="custom-card">
+          <template #header>
+            <span>离线日志</span>
+          </template>
+          <OfflineLog />
+        </el-card>
+      </el-col>
 
-    <el-col :xs="24" :sm="24" :md="9" class="card-box">
-      <el-card class="custom-card fixed-height-card" style="margin-bottom: 10px;">
-        <template #header>
-          <div class="card-header-with-button">
-            <span>在线情况</span>
-          </div>
-        </template>
-
-        <el-form>
-          <el-row :gutter="10">
-            <el-col :xs="24" :sm="14">
-              <el-form-item label="企业名称" prop="companyId" class="mobile-form-item">
-                <el-select v-model="selectedCompanyId" placeholder="请选择企业" clearable filterable class="full-width-select">
-                  <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
-                    :value="item.companyId" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="10">
-              <el-form-item class="mobile-form-item">
-                <el-switch v-model="showOfflineOnly" active-text="仅离线" inactive-text="全部" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-
-        <div class="status-list scrollable-content">
-          <div v-for="item in filteredInterfaceStatus" :key="item.name" class="status-item">
-            <div class="status-content">
-              <span class="status-dot" :style="{ backgroundColor: item.status ? 'green' : 'red' }"></span>
-              <span class="interface-name clickable" :class="{ 'online': item.status, 'offline': !item.status }"
-                @click="handleCompanyClick(item.companyId)">{{ item.name }}</span>
-            </div>
-            <div class="status-time">{{ formatTime(item.time) }}</div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="custom-card fixed-height-card" style="margin-top: 10px;">
-        <template #header>
-          <div class="card-header-with-button">
-            <span>最新管控措施</span>
-            <el-button type="primary" link icon="Plus" @click="goToControlRule" class="mobile-button">管理管控规则</el-button>
-          </div>
-        </template>
-
-        <el-form>
-          <el-row :gutter="10">
-            <el-col :xs="24" :sm="14">
-              <el-form-item label="企业名称" prop="companyId" class="mobile-form-item">
-                <el-select v-model="selectedControlCompanyId" placeholder="请选择企业" clearable filterable class="full-width-select">
-                  <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
-                    :value="item.companyId" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="10">
-              <el-form-item class="mobile-form-item">
-                <el-button type="info" plain icon="InfoFilled" @click="getLatestControl(selectedControlCompanyId)"
-                  :disabled="!selectedControlCompanyId" class="full-width-button">查询最新管控</el-button>
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-
-        <div class="status-list scrollable-content">
-          <!-- 管理员且未选择企业时显示企业列表 -->
-          <template v-if="userStore.roles.includes('admin') && !selectedControlCompanyId">
-            <div v-for="item in enterpriseIds" :key="item.companyId" class="status-item">
-              <div class="status-content">
-                <span class="interface-name clickable" @click="handleControlCompanyClick(item.companyId)">
-                  {{ item.companyName }}
-                </span>
-              </div>
+      <el-col :xs="24" :sm="24" :md="9" class="card-box">
+        <el-card class="custom-card fixed-height-card" style="margin-bottom: 10px;">
+          <template #header>
+            <div class="card-header-with-button">
+              <span>在线情况</span>
             </div>
           </template>
-          <!-- 选择企业后或非管理员时显示管控信息 -->
-          <template v-else>
-            <div v-if="controlInfo" class="control-info">
-              <el-descriptions :column="2" border>
-                <el-descriptions-item label="预警等级">
-                  <el-tag :type="getWarningLevelType(controlInfo.warningLevel)">
-                    {{ getWarningLevelText(controlInfo.warningLevel) }}
-                  </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="响应等级">
-                  <el-tag :type="getResponseLevelType(controlInfo.responseLevel)">
-                    {{ getResponseLevelText(controlInfo.responseLevel) }}
-                  </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="管控时间" :span="2">
-                  {{ controlInfo.startTime }} 至 {{ controlInfo.endTime }}
-                </el-descriptions-item>
-                <el-descriptions-item label="管控措施" :span="2">
-                  <div class="control-measures">
-                    <template v-if="controlInfo.controlMeasure">
-                      <template v-if="/^\d+$/.test(controlInfo.controlMeasure)">
-                        {{ getMeasureText(controlInfo.controlMeasure) }}
-                      </template>
-                      <template v-else>
-                        <template v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0 || getEmissionStandards(controlInfo.controlMeasure).length > 0">
-                          <div v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0" class="measure-item">
-                            <div class="measure-label">限行车辆类型：</div>
-                            <div class="measure-content">{{ getVehicleTypes(controlInfo.controlMeasure).join('、') }}</div>
-                          </div>
-                          <div v-if="getEmissionStandards(controlInfo.controlMeasure).length > 0" class="measure-item">
-                            <div class="measure-label">限行排放阶段：</div>
-                            <div class="measure-content">{{ getEmissionStandards(controlInfo.controlMeasure).join('、') }}</div>
-                          </div>
+
+          <el-form>
+            <el-row :gutter="10">
+              <el-col :xs="24" :sm="14">
+                <el-form-item label="企业名称" prop="companyId" class="mobile-form-item">
+                  <el-select v-model="selectedCompanyId" placeholder="请选择企业" clearable filterable
+                    class="full-width-select">
+                    <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
+                      :value="item.companyId" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="10">
+                <el-form-item class="mobile-form-item">
+                  <el-switch v-model="showOfflineOnly" active-text="仅离线" inactive-text="全部" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <div class="status-list scrollable-content">
+            <div v-for="item in filteredInterfaceStatus" :key="item.name" class="status-item">
+              <div class="status-content">
+                <span class="status-dot" :style="{ backgroundColor: item.status ? 'green' : 'red' }"></span>
+                <span class="interface-name clickable" :class="{ 'online': item.status, 'offline': !item.status }"
+                  @click="handleCompanyClick(item.companyId)">{{ item.name }}</span>
+              </div>
+              <div class="status-time">{{ formatTime(item.time) }}</div>
+            </div>
+          </div>
+        </el-card>
+
+        <el-card class="custom-card fixed-height-card" style="margin-top: 10px;">
+          <template #header>
+            <div class="card-header-with-button">
+              <span>最新管控措施</span>
+              <el-button type="primary" link icon="Plus" @click="goToControlRule"
+                class="mobile-button">管理管控规则</el-button>
+            </div>
+          </template>
+
+          <el-form>
+            <el-row :gutter="10">
+              <el-col :xs="24" :sm="14">
+                <el-form-item label="企业名称" prop="companyId" class="mobile-form-item">
+                  <el-select v-model="selectedControlCompanyId" placeholder="请选择企业" clearable filterable
+                    class="full-width-select">
+                    <el-option v-for="item in enterpriseIds" :key="item.companyId" :label="item.companyName"
+                      :value="item.companyId" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :sm="10">
+                <el-form-item class="mobile-form-item">
+                  <el-button type="info" plain icon="InfoFilled" @click="getLatestControl(selectedControlCompanyId)"
+                    :disabled="!selectedControlCompanyId" class="full-width-button">查询最新管控</el-button>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <div class="status-list scrollable-content">
+            <!-- 管理员且未选择企业时显示企业列表 -->
+            <template v-if="userStore.roles.includes('admin') && !selectedControlCompanyId">
+              <div v-for="item in enterpriseIds" :key="item.companyId" class="status-item">
+                <div class="status-content">
+                  <span class="interface-name clickable" @click="handleControlCompanyClick(item.companyId)">
+                    {{ item.companyName }}
+                  </span>
+                </div>
+              </div>
+            </template>
+            <!-- 选择企业后或非管理员时显示管控信息 -->
+            <template v-else>
+              <div v-if="controlInfo" class="control-info">
+                <el-descriptions :column="2" border>
+                  <el-descriptions-item label="预警等级">
+                    <el-tag :type="getWarningLevelType(controlInfo.warningLevel)">
+                      {{ getWarningLevelText(controlInfo.warningLevel) }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="响应等级">
+                    <el-tag :type="getResponseLevelType(controlInfo.responseLevel)">
+                      {{ getResponseLevelText(controlInfo.responseLevel) }}
+                    </el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="管控时间" :span="2">
+                    {{ controlInfo.startTime }} 至 {{ controlInfo.endTime }}
+                  </el-descriptions-item>
+                  <el-descriptions-item label="管控措施" :span="2">
+                    <div class="control-measures">
+                      <template v-if="controlInfo.controlMeasure">
+                        <template v-if="/^\d+$/.test(controlInfo.controlMeasure)">
+                          {{ getMeasureText(controlInfo.controlMeasure) }}
                         </template>
                         <template v-else>
-                          {{ controlInfo.controlMeasure }}
+                          <template
+                            v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0 || getEmissionStandards(controlInfo.controlMeasure).length > 0">
+                            <div v-if="getVehicleTypes(controlInfo.controlMeasure).length > 0" class="measure-item">
+                              <div class="measure-label">限行车辆类型：</div>
+                              <div class="measure-content">{{ getVehicleTypes(controlInfo.controlMeasure).join('、') }}
+                              </div>
+                            </div>
+                            <div v-if="getEmissionStandards(controlInfo.controlMeasure).length > 0"
+                              class="measure-item">
+                              <div class="measure-label">限行排放阶段：</div>
+                              <div class="measure-content">{{ getEmissionStandards(controlInfo.controlMeasure).join('、')
+                                }}</div>
+                            </div>
+                          </template>
+                          <template v-else>
+                            {{ controlInfo.controlMeasure }}
+                          </template>
                         </template>
                       </template>
-                    </template>
-                  </div>
-                </el-descriptions-item>
-              </el-descriptions>
-            </div>
-            <div v-else class="empty-container">
-              <el-empty description="暂无管控措施" />
-            </div>
-          </template>
-        </div>
-      </el-card>
-    </el-col>
-  </el-row>
+                    </div>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+              <div v-else class="empty-container">
+                <el-empty description="暂无管控措施" />
+              </div>
+            </template>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+  </div>
 </template>
 
 <script setup>
@@ -284,8 +293,8 @@ const requestStatus = {
 const getInterfaceStatus = async (silent = false) => {
   // 检查是否可以发起新请求
   const now = Date.now();
-  if (requestStatus.isAliveRequesting || 
-      (now - requestStatus.lastRequestTime) < requestStatus.minInterval) {
+  if (requestStatus.isAliveRequesting ||
+    (now - requestStatus.lastRequestTime) < requestStatus.minInterval) {
     return;
   }
 
@@ -302,7 +311,7 @@ const getInterfaceStatus = async (silent = false) => {
       enterpriseReqList: enterpriseIds.value,
       cameraReqList: cameraList.value
     };
-    
+
     const response = await isAlive(req);
     if (response) {
       interfaceStatus.value = response;
@@ -413,21 +422,21 @@ onMounted(() => {
 
   const initialize = async () => {
     if (isInitialized) return;
-    
+
     try {
       await getEnterpriseList();
-      
+
       if (!userStore.roles.includes('admin') && enterpriseIds.value.length > 0) {
         selectedCompanyId.value = enterpriseIds.value[0].companyId;
         selectedControlCompanyId.value = enterpriseIds.value[0].companyId;
         await getLatestControl(selectedControlCompanyId.value);
       }
-      
+
       if (!userStore.roles.includes('admin')) {
         const response = await getCameraList(selectedCompanyId.value);
         cameraList.value = response.rows;
       }
-      
+
       // 静默模式调用状态检查
       await getInterfaceStatus(true);
       isInitialized = true;

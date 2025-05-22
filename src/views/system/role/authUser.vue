@@ -112,6 +112,7 @@ const queryParams = reactive({
   roleId: route.params.roleId,
   userName: undefined,
   phonenumber: undefined,
+  nickName: undefined
 });
 
 /** 查询授权用户列表 */

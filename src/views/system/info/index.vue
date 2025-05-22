@@ -61,7 +61,7 @@
       </div>
     </transition>
 
-    <el-table v-loading="loading" :data="infoList" @selection-change="handleSelectionChange">
+    <el-table v-loading="loading" :data="infoList" @selection-change="handleSelectionChange" @sort-change="handleSortChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="企业名称" align="center" prop="companyName" />
       <el-table-column label="二维码" align="center" width="100">
@@ -91,7 +91,8 @@
       <el-table-column label="法人代表" align="center" prop="legalRpst" />
       <el-table-column label="ocr收费标准" align="center" prop="ocrFeeStandard" />
       <el-table-column label="服务费" align="center" prop="serviceFee" />
-      <el-table-column label="服务失效时间" align="center" prop="expireTime" width="110">
+      <el-table-column label="服务失效时间" align="center" prop="expireTime" width="110"
+      sort-orders="['descending','ascending']" sortable="custom">
         <template #default="scope">
           <span>{{ parseTime(scope.row.expireTime, '{y}-{m}-{d}') }}</span>
         </template>
@@ -110,7 +111,7 @@
         <template #default="scope">
           <dict-tag :options="ei_classification" :value="scope.row.classifi?.toString()" />
         </template>
-      </el-table-column>/>
+      </el-table-column>
       <!-- <el-table-column label="禁行排放等级" align="center" prop="emissionState">
         <template #default="scope">
           <dict-tag :options="emission_state" :value="scope.row.emissionState" />
@@ -514,6 +515,7 @@ const data = reactive({
     deptId: null,
     weightPassword: null
   },
+  defaultSort: { prop: 'expireTime', order: 'descending' },
   rules: {
   }
 });
@@ -691,7 +693,16 @@ function handleQuery() {
 /** 重置按钮操作 */
 function resetQuery() {
   proxy.resetForm("queryRef");
+  proxy.$refs.table?.sort(data.defaultSort.prop, data.defaultSort.order);
   handleQuery();
+}
+
+function handleSortChange(column){
+  queryParams.value.orderByColumn = column.prop;//查询字段是表格中字段名字
+  // 转换排序方向为后端需要的格式
+  queryParams.value.isAsc = column.order === 'ascending' ? 'asc' : 'desc';
+  console.log(queryParams.value);
+  getList();
 }
 
 // 多选框选中数据

@@ -50,3 +50,24 @@ export function checkOffSiteVehicle(data) {
     data: data
   })
 }
+
+export function queryOffSiteVehicle(companyId,plateNo) {
+  return request({
+    url: '/wx/vehicle/plate/'+ companyId + "/" + plateNo,
+    method: 'get',
+  })
+}
+
+export function recentRecord(companyId,plateNo){
+  return request({
+    url: '/wx/vehicle/recentRecord',
+    method: 'get',
+    headers: {
+      skipAuth: true
+    },
+    params: {
+      companyId: companyId,
+      plateNo: plateNo
+    }
+  })
+}

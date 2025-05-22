@@ -135,6 +135,13 @@
                     </span>
                     <dict-tag :options="snap_strategy" :value="item.snapStrategy" />
                   </div>
+                  <div class="info-item">
+                    <span class="label">
+                      <el-icon><Tickets /></el-icon>
+                      <span>显示二维码</span>
+                    </span>
+                    <dict-tag :options="is_auto_report" :value="item.showQr" />
+                  </div>
                 </div>
               </el-col>
               <el-col :span="24">
@@ -402,12 +409,21 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <!-- <el-col :span="24">
             <el-form-item label="抓拍策略" prop="snapStrategy">
               <el-select v-model="formData.snapStrategy" placeholder="请选择抓拍策略" clearable>
                 <el-option v-for="dict in snap_strategy" :key="dict.value" :label="dict.label"
-                  :value="dict.value" />
+                  :value="Number(dict.value)" />
               </el-select>
+            </el-form-item>
+          </el-col> -->
+          <el-col :span="24">
+            <el-form-item label="显示二维码" prop="showQr">
+              <el-radio-group v-model="formData.showQr">
+                <el-radio v-for="dict in is_auto_report" :key="dict.value" :label="parseInt(dict.value)">
+                  {{ dict.label }}
+                </el-radio>
+              </el-radio-group>
             </el-form-item>
           </el-col>
         </el-row>
@@ -647,7 +663,8 @@ const data = reactive({
     violationAutoReport: null,
     violationAlarm: null,
     snapStrategy: null,
-    isOnline: null
+    isOnline: null,
+    showQr: null
   },
   rules: {
     companyId: [
@@ -674,8 +691,11 @@ const data = reactive({
     isOnline: [
       { required: true, message: "请选择是否接入接口平台", trigger: "change" }
     ],
-    snapStrategy: [
-      { required: true, message: "请选择抓拍策略", trigger: "change" }
+    // snapStrategy: [
+    //   { required: true, message: "请选择抓拍策略", trigger: "change" }
+    // ],
+    showQr: [
+      { required: true, message: "请选择是否显示二维码", trigger: "change" }
     ]
   },
   qrcodeDialogVisible: false,
@@ -729,7 +749,8 @@ function reset() {
     violationAutoReport: null,
     violationAlarm: null,
     snapStrategy: null,
-    isOnline: null
+    isOnline: null,
+    showQr: null
   };
   proxy.resetForm("enterpriseConfigRef");
 }

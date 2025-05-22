@@ -113,6 +113,13 @@ export const constantRoutes = [
     hidden: true,
   },
   {
+    path: '/wx/pay-success',
+    component: () => import('@/views/wx/pay/success.vue'),
+    name: 'PaySuccessPage',
+    meta: { title: '支付成功', icon: 'example' },
+    hidden: true,
+  },
+  {
     path: '/wx/supplement',
     component: () => import('@/views/wx/supplement/index.vue'),
     name: 'SupplementPage',

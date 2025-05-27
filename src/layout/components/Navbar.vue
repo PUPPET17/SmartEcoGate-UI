@@ -96,6 +96,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="closePayDialog" v-if="!isExpired">{{ showQrCode ? '关闭' : '取消' }}</el-button>
+          <el-button type="danger" @click="logout">退出登录</el-button>
           <template v-if="!showQrCode">
             <el-button type="primary" @click="handleCreateOrder" :loading="!serviceInfo">
               确认下单
@@ -122,7 +123,7 @@ import SizeSelect from '@/components/SizeSelect'
 import HeaderSearch from '@/components/HeaderSearch'
 import useAppStore from '@/store/modules/app'
 import useUserStore from '@/store/modules/user'
-import { selectIds } from "@/api/system/info";
+import { selectAllIds } from "@/api/system/info";
 import { checkIfExpired } from '@/api/system/expire'
 import { getQrPayUrl, getSeviceFee } from '@/api/system/paymentConfig'
 import useSettingsStore from '@/store/modules/settings'
@@ -145,7 +146,17 @@ const showQrCode = ref(false)
 const isExpired = ref(false)
 
 const showNotice = computed(() => {
-  const shouldShow = !userStore.roles.includes('admin') && !userStore.roles.includes('common') && expirationNotice.value
+  const isNotAdmin = !userStore.roles.includes('admin')
+  const isNotCommon = !userStore.roles.includes('common')
+  const shouldShow = isNotAdmin && isNotCommon 
+  
+  console.log('调试信息：', {
+    isNotAdmin,
+    isNotCommon,
+    expirationNoticeValue: expirationNotice.value,
+    shouldShow
+  })
+  
   return shouldShow
 })
 
@@ -203,7 +214,7 @@ function handleMouseLeave() {
 
 async function  getEnterpriseList() {
   try {
-    const response = await selectIds();
+    const response = await selectAllIds();
     if (!response) {
       return;
     }

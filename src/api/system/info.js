@@ -59,6 +59,14 @@ export function selectIds() {
   return res;
 }
 
+export function selectAllIds() {
+  const res = request({
+    url: "/system/info/allId",
+    method: "get",
+  });
+  return res;
+}
+
 export function idsWithNonRegistered() {
   const res = request({
     url: "/system/info/idsWithNonRegistered",

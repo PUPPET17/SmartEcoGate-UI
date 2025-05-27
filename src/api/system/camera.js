@@ -84,3 +84,11 @@ export function checkCameraConnectionStatus(clientId) {
     method: "get",
   });
 }
+
+// 开闸
+export function openGate(sn) {
+  return request({
+    url: `/system/camera/open/${sn}`,
+    method: "get",
+  });
+}

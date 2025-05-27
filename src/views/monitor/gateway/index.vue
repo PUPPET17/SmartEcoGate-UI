@@ -148,7 +148,7 @@
                         @click="handlePlayVideo(item)">
                         播放视频
                       </el-button>
-                      <el-button type="success" :icon="Open">开闸</el-button>
+                      <el-button type="success" :icon="Open" :disabled="!item.isAlive" @click="handleOpenGate(item)">开闸</el-button>
                     </div>
                   </div>
                 </div>
@@ -283,7 +283,7 @@ import { Upload, Document, Open, Close, Warning, Refresh, VideoPlay } from '@ele
 import { ElNotification } from 'element-plus'
 import { Chart } from 'chart.js/auto'
 import { getCompanyInfo, isAlive, selectIds } from '@/api/system/info'
-import { getCameraInfoByCompanyId } from '@/api/system/camera'
+import { getCameraInfoByCompanyId, openGate } from '@/api/system/camera'
 import { queryLatestControl } from '@/api/system/measure'
 import { getLatestRecord, getstat } from '@/api/transit/record'
 import { auth, getBaseUrl } from '@/api/system/gb28281'
@@ -1149,6 +1149,42 @@ export default {
       }
     }
 
+    // 添加开闸处理函数
+    const handleOpenGate = async (camera) => {
+      try {
+        if (!camera.cameraSn) {
+          ElNotification({
+            title: '错误',
+            message: '该摄像头不支持开闸操作',
+            type: 'error'
+          })
+          return
+        }
+
+        const response = await openGate(camera.cameraSn)
+        if (response.code === 200) {
+          ElNotification({
+            title: '成功',
+            message: '开闸指令已发送',
+            type: 'success'
+          })
+        } else {
+          ElNotification({
+            title: '错误',
+            message: response.msg || '开闸失败',
+            type: 'error'
+          })
+        }
+      } catch (error) {
+        console.error('开闸失败:', error)
+        ElNotification({
+          title: '错误',
+          message: '开闸操作失败',
+          type: 'error'
+        })
+      }
+    }
+
     onMounted(() => {
       fetchCompanyList()
       updateTime()
@@ -1204,7 +1240,8 @@ export default {
       selectedCompanyId,
       companyList,
       handleCompanySelect,
-      formatTime
+      formatTime,
+      handleOpenGate
     }
   }
 }

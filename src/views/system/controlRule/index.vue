@@ -1,5 +1,48 @@
 <template>
     <div class="app-container">
+        <!-- 车辆类型配置弹窗按钮，仅管理员可见 -->
+        <el-button type="primary" @click="vehicleTypeDialogOpen = true" v-if="isAdmin" style="margin-bottom: 16px;">非上传车辆类型配置</el-button>
+        <!-- 车辆类型配置弹窗 -->
+        <el-dialog v-model="vehicleTypeDialogOpen" title="非上传车辆类型配置" width="1200px" append-to-body>
+            <div class="vehicle-type-content">
+                <div class="description">
+                    <el-alert
+                        title="系统默认配置为轿车和客车"
+                        type="info"
+                        :closable="false"
+                        show-icon
+                    />
+                </div>
+                <!-- 新增：车辆类型关键字过滤输入框 -->
+                <div style="margin-bottom: 16px;">
+                    <el-input
+                        v-model="vehicleTypeFilter"
+                        placeholder="输入关键字快速筛选车辆类型"
+                        clearable
+                        prefix-icon="Search"
+                        style="width: 350px;"
+                    />
+                </div>
+                <div class="vehicle-type-selector">
+                    <el-checkbox-group v-model="selectedVehicleTypes" class="vehicle-type-checkbox-group">
+                        <el-checkbox 
+                            v-for="item in filteredVehicleTypeOptions" 
+                            :key="item.dictValue" 
+                            :label="item.dictValue"
+                            class="vehicle-type-checkbox"
+                        >
+                            {{ item.dictLabel }}
+                        </el-checkbox>
+                    </el-checkbox-group>
+                </div>
+            </div>
+            <template #footer>
+                <el-button @click="vehicleTypeDialogOpen = false">取 消</el-button>
+                <el-button type="primary" @click="handleUpdateVehicleTypes">保存配置</el-button>
+                <el-button @click="handleResetVehicleTypes">重置默认</el-button>
+            </template>
+        </el-dialog>
+
         <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
             <el-col :span="5">
                 <el-form-item label="企业名称" prop="companyId">
@@ -38,6 +81,18 @@
             </el-col>
             <el-col :span="1.5">
                 <el-button type="warning" plain icon="Download" @click="handleExport">导出</el-button>
+            </el-col>
+            <!-- 美化后的非上传车辆类型配置按钮 -->
+            <el-col :span="2" v-if="isAdmin">
+                <el-button
+                    type="info"
+                    plain
+                    icon="Setting"
+                    @click="vehicleTypeDialogOpen = true"
+                    style="margin-left: 16px;"
+                >
+                    非上传车辆类型配置
+                </el-button>
             </el-col>
             <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
         </el-row>
@@ -277,11 +332,18 @@
 import { listForbiddenRule, getForbiddenRule, delForbiddenRule, addForbiddenRule, updateForbiddenRule, exportForbiddenRule } from "@/api/system/forbiddenRule";
 import { queryLatestControl } from "@/api/system/measure";
 import { selectIds } from "@/api/system/info";
+import useUserStore from '@/store/modules/user'
+import { getRedisContents, getFullDictList, updateRedisContents, resetToDefault } from "@/api/system/vehicleType";
 
 const { proxy } = getCurrentInstance();
 const { plate_color, emission_standard, fuel_type, vehicle_type, classify_title } = proxy.useDict(
     'plate_color', 'emission_standard', 'fuel_type', 'vehicle_type', 'classify_title'
 );
+
+const userStore = useUserStore()
+const isAdmin = computed(() => {
+  return userStore.roles.includes('admin')
+})
 
 const enterpriseIds = ref([]);
 const loading = ref(true);
@@ -769,6 +831,84 @@ const getCompanyName = (companyId) => {
     const company = enterpriseIds.value.find(item => item.companyId === companyId)
     return company ? company.companyName : companyId
 }
+
+// 添加车辆类型配置相关的响应式变量
+const vehicleTypeLoading = ref(false);
+const selectedVehicleTypes = ref([]);
+const vehicleTypeOptions = ref([]);
+const vehicleTypeDialogOpen = ref(false);
+const vehicleTypeFilter = ref("");
+const filteredVehicleTypeOptions = computed(() => {
+    if (!vehicleTypeFilter.value) return vehicleTypeOptions.value;
+    return vehicleTypeOptions.value.filter(item =>
+        item.dictLabel?.toLowerCase().includes(vehicleTypeFilter.value.toLowerCase()) ||
+        item.dictValue?.toLowerCase().includes(vehicleTypeFilter.value.toLowerCase())
+    );
+});
+
+// 获取车辆类型配置
+const getVehicleTypeConfig = async () => {
+    try {
+        vehicleTypeLoading.value = true;
+        // 获取Redis中的配置
+        const redisResponse = await getRedisContents();
+        if (redisResponse.code === 200) {
+            selectedVehicleTypes.value = redisResponse.data || [];
+        }
+        // 获取完整的车辆类型列表
+        const fullListResponse = await getFullDictList();
+        if (fullListResponse.code === 200) {
+            vehicleTypeOptions.value = fullListResponse.data;
+        }
+    } catch (error) {
+        console.error('获取车辆类型配置失败:', error);
+        proxy.$modal.msgError('获取车辆类型配置失败');
+    } finally {
+        vehicleTypeLoading.value = false;
+    }
+};
+
+// 更新车辆类型配置
+const handleUpdateVehicleTypes = async () => {
+    try {
+        vehicleTypeLoading.value = true;
+        const response = await updateRedisContents(selectedVehicleTypes.value);
+        if (response.code === 200) {
+            proxy.$modal.msgSuccess('更新成功');
+        } else {
+            proxy.$modal.msgError(response.msg || '更新失败');
+        }
+    } catch (error) {
+        console.error('更新车辆类型配置失败:', error);
+        proxy.$modal.msgError('更新车辆类型配置失败');
+    } finally {
+        vehicleTypeLoading.value = false;
+    }
+};
+
+// 重置为默认配置
+const handleResetVehicleTypes = async () => {
+    try {
+        vehicleTypeLoading.value = true;
+        const response = await resetToDefault();
+        if (response.code === 200) {
+            proxy.$modal.msgSuccess('重置成功');
+            await getVehicleTypeConfig(); // 重新获取配置
+        } else {
+            proxy.$modal.msgError(response.msg || '重置失败');
+        }
+    } catch (error) {
+        console.error('重置车辆类型配置失败:', error);
+        proxy.$modal.msgError('重置车辆类型配置失败');
+    } finally {
+        vehicleTypeLoading.value = false;
+    }
+};
+
+// 在组件挂载时获取配置
+onMounted(() => {
+    getVehicleTypeConfig();
+});
 
 // 初始化
 getEnterpriseList();
@@ -1371,5 +1511,44 @@ getList();
 
 .custom-tooltip .el-tooltip__popper {
   /* 额外的样式可以在这里添加 */
+}
+
+/* 添加车辆类型配置卡片样式 */
+.vehicle-type-config {
+    margin-bottom: 20px;
+}
+
+.vehicle-type-config .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.vehicle-type-config .header-right {
+    display: flex;
+    gap: 10px;
+}
+
+.vehicle-type-content {
+    padding: 10px 0;
+}
+
+.vehicle-type-content .description {
+    margin-bottom: 20px;
+}
+
+.vehicle-type-selector {
+    margin-top: 20px;
+}
+
+.vehicle-type-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.vehicle-type-checkbox {
+    margin-right: 0;
+    min-width: 120px;
 }
 </style>
